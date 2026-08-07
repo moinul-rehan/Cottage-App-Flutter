@@ -597,7 +597,6 @@ class _SpeedDialMenuState extends State<_SpeedDialMenu> with SingleTickerProvide
           child: Text(
             item.label,
             style: TextStyle(
-              fontFamily: 'Poppins',
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: surface.foreground,

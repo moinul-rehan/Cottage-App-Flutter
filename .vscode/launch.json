@@ -7,7 +7,10 @@
         {
             "name": "Dart & Flutter",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define-from-file=env.json"
+            ]
         }
     ]
 }

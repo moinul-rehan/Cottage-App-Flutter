@@ -278,7 +278,6 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'Poppins',
                 fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 13,
                 color: active ? Colors.white : surface.foreground,
@@ -347,7 +346,6 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                 const Text(
                   'Utility Overview',
                   style: TextStyle(
-                    fontFamily: 'Poppins',
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                     color: Colors.white,
@@ -363,7 +361,6 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                   child: Text(
                     _formatMonth(data.monthKey),
                     style: const TextStyle(
-                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                       color: CottageColors.primary,
@@ -404,7 +401,6 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                             Text(
                               "Full utility, deposit and dues records for every member in the active month.",
                               style: TextStyle(
-                                fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w400,
                                 fontSize: 14,
                                 color: surface.foreground.withValues(alpha: 0.8),
@@ -422,7 +418,6 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                                   label: Text(
                                     'Download',
                                     style: TextStyle(
-                                      fontFamily: 'Poppins',
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
                                       color: surface.foreground,
@@ -531,7 +526,6 @@ class _ExpensesTab extends StatelessWidget {
                       child: const Text(
                         'Total Expenses',
                         style: TextStyle(
-                          fontFamily: 'Poppins',
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
@@ -546,7 +540,6 @@ class _ExpensesTab extends StatelessWidget {
                       child: Text(
                         '${total.toStringAsFixed(2)} tk',
                         style: TextStyle(
-                          fontFamily: 'Poppins',
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
@@ -593,7 +586,6 @@ class _ExpensesTab extends StatelessWidget {
                     child: Text(
                       formattedDate,
                       style: TextStyle(
-                        fontFamily: 'Poppins',
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: surface.foreground,
@@ -615,7 +607,6 @@ class _ExpensesTab extends StatelessWidget {
                         Text(
                           title,
                           style: const TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: CottageColors.primary,
@@ -625,7 +616,6 @@ class _ExpensesTab extends StatelessWidget {
                         Text(
                           e.payerName ?? 'Member',
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: surface.foreground,
@@ -649,7 +639,6 @@ class _ExpensesTab extends StatelessWidget {
                         Text(
                           'Payment Source',
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: surface.mutedForeground,
@@ -658,7 +647,6 @@ class _ExpensesTab extends StatelessWidget {
                         Text(
                           'Cottage Balance',
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: surface.foreground,
@@ -684,7 +672,6 @@ class _ExpensesTab extends StatelessWidget {
                             child: const Text(
                               'Total Amount',
                               style: TextStyle(
-                                fontFamily: 'Poppins',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: CottageColors.primary,
@@ -699,7 +686,6 @@ class _ExpensesTab extends StatelessWidget {
                             child: Text(
                               '${e.amount.toStringAsFixed(2)} tk',
                               style: TextStyle(
-                                fontFamily: 'Poppins',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: surface.foreground,
@@ -769,7 +755,6 @@ class _DepositsTab extends StatelessWidget {
                       child: Text(
                         'Total Collected',
                         style: TextStyle(
-                          fontFamily: 'Poppins',
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
@@ -784,7 +769,6 @@ class _DepositsTab extends StatelessWidget {
                       child: Text(
                         '${total.toStringAsFixed(2)} tk',
                         style: TextStyle(
-                          fontFamily: 'Poppins',
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
@@ -841,7 +825,6 @@ class _DepositsTab extends StatelessWidget {
                         Text(
                           name,
                           style: const TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: CottageColors.primary,
@@ -873,7 +856,6 @@ class _DepositsTab extends StatelessWidget {
                               child: const Text(
                                 'No notes detailed',
                                 style: TextStyle(
-                                  fontFamily: 'Poppins',
                                   fontSize: 13,
                                   color: Color(0xFF404040),
                                 ),
@@ -896,7 +878,6 @@ class _DepositsTab extends StatelessWidget {
                                 const Text(
                                   'Total Amount',
                                   style: TextStyle(
-                                    fontFamily: 'Poppins',
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color: CottageColors.primary,
@@ -917,7 +898,6 @@ class _DepositsTab extends StatelessWidget {
                                 Text(
                                   '${d.amount.toStringAsFixed(0)} tk',
                                   style: TextStyle(
-                                    fontFamily: 'Poppins',
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: surface.foreground,
@@ -1010,7 +990,6 @@ class _DuesTab extends StatelessWidget {
                           child: Text(
                             name,
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: surface.foreground,
@@ -1029,7 +1008,6 @@ class _DuesTab extends StatelessWidget {
                             child: const Text(
                               'Paid',
                               style: TextStyle(
-                                fontFamily: 'Poppins',
                                 fontSize: 11,
                                 color: Color(0xFF059669),
                                 fontWeight: FontWeight.w600,
@@ -1046,7 +1024,6 @@ class _DuesTab extends StatelessWidget {
                             child: const Text(
                               'Due',
                               style: TextStyle(
-                                fontFamily: 'Poppins',
                                 fontSize: 11,
                                 color: CottageColors.destructive,
                                 fontWeight: FontWeight.w600,
@@ -1121,7 +1098,6 @@ class _DueField extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Poppins',
               fontSize: 11,
               fontWeight: FontWeight.w500,
               color: surface.mutedForeground,
@@ -1131,7 +1107,6 @@ class _DueField extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Poppins',
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: valueColor ?? surface.foreground,

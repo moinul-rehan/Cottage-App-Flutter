@@ -232,7 +232,7 @@ class _MemberCard extends StatelessWidget {
                     label: 'Balance',
                     value: _tk(row.balance),
                     surface: surface,
-                    valueColor: balancePositive ? const Color(0xFF374151) : const Color(0xFFFF0000),
+                    valueColor: balancePositive ? const Color(0xFF289029) : const Color(0xFFFF0000),
                   ),
                 ),
               ],

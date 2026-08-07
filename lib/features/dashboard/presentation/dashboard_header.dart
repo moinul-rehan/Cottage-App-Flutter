@@ -266,18 +266,12 @@ class _DashboardNavRowState extends State<DashboardNavRow> {
 
         return Row(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white, width: 1.0),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(9),
-                child: SizedBox(
-                  width: 42,
-                  height: 42,
-                  child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 42,
+                height: 42,
+                child: Image.asset('assets/images/TopLogo.png', fit: BoxFit.contain),
               ),
             ),
             const Spacer(),

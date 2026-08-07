@@ -172,7 +172,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                 Text(
                   '+ Add Meal',
                   style: TextStyle(
-                    fontFamily: 'Poppins',
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: surface.foreground,
@@ -190,7 +189,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             const Text(
               'Date',
               style: TextStyle(
-                fontFamily: 'Poppins',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -225,7 +223,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                     Text(
                       formatDateForField(selectedDate),
                       style: TextStyle(
-                        fontFamily: 'Poppins',
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: surface.foreground,
@@ -245,7 +242,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                   child: Text(
                     'Member',
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: surface.mutedForeground,
@@ -258,7 +254,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                     'Lunch',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: surface.mutedForeground,
@@ -271,7 +266,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                     'Dinner',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: surface.mutedForeground,
@@ -284,7 +278,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                     'Total',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      fontFamily: 'Poppins',
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: surface.mutedForeground,
@@ -322,7 +315,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                           child: Text(
                             member.displayName,
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: surface.foreground,
@@ -345,7 +337,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontFamily: 'Poppins',
                                   fontSize: 15,
                                   color: surface.foreground,
                                 ),
@@ -376,7 +367,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontFamily: 'Poppins',
                                   fontSize: 15,
                                   color: surface.foreground,
                                 ),
@@ -397,7 +387,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                             total.toStringAsFixed(total % 1 == 0 ? 0 : 1),
                             textAlign: TextAlign.right,
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: surface.foreground,
@@ -964,7 +953,6 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'Poppins',
                 fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 13, // Slightly smaller to fit with icon
                 color: active ? Colors.white : surface.foreground,
@@ -1188,7 +1176,6 @@ class _DailyMealsTab extends StatelessWidget {
                         child: Text(
                           _formatDate(date),
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: surface.foreground,
@@ -1238,7 +1225,6 @@ class _DailyMealsTab extends StatelessWidget {
                           Text(
                             entry.memberName ?? 'Member',
                             style: const TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: CottageColors.primary,
@@ -1252,7 +1238,6 @@ class _DailyMealsTab extends StatelessWidget {
                           Text(
                             entry.count.toStringAsFixed(entry.count % 1 == 0 ? 0 : 1),
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 14,
                               fontWeight: FontWeight.w600, // Matched font weight
                               color: surface.foreground,
@@ -1353,7 +1338,6 @@ class _BazaarTab extends StatelessWidget {
                         child: Text(
                           _formatDate(entry.date),
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: surface.foreground,
@@ -1425,7 +1409,6 @@ class _BazaarTab extends StatelessWidget {
                           Text(
                             entry.memberName ?? 'Member',
                             style: const TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: CottageColors.primary,
@@ -1461,7 +1444,6 @@ class _BazaarTab extends StatelessWidget {
                                       ? entry.description!
                                       : 'No items detailed',
                                   style: const TextStyle(
-                                    fontFamily: 'Poppins',
                                     fontSize: 13,
                                     color: Color(0xFF404040),
                                   ),
@@ -1485,7 +1467,6 @@ class _BazaarTab extends StatelessWidget {
                                   const Text(
                                     'Total Amount',
                                     style: TextStyle(
-                                      fontFamily: 'Poppins',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: CottageColors.primary,
@@ -1506,7 +1487,6 @@ class _BazaarTab extends StatelessWidget {
                                   Text(
                                     '${entry.amount.toStringAsFixed(0)} tk',
                                     style: TextStyle(
-                                      fontFamily: 'Poppins',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: surface.foreground,
@@ -1609,7 +1589,6 @@ class _DepositTab extends StatelessWidget {
                         child: Text(
                           _formatDate(entry.date),
                           style: TextStyle(
-                            fontFamily: 'Poppins',
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: surface.foreground,
@@ -1664,7 +1643,6 @@ class _DepositTab extends StatelessWidget {
                           Text(
                             entry.memberName ?? 'Member',
                             style: const TextStyle(
-                              fontFamily: 'Poppins',
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: CottageColors.primary,
@@ -1699,7 +1677,6 @@ class _DepositTab extends StatelessWidget {
                                       ? entry.note!
                                       : 'Manual deposit',
                                   style: const TextStyle(
-                                    fontFamily: 'Poppins',
                                     fontSize: 13,
                                     color: Color(0xFF888888), // Muted grey
                                   ),
@@ -1723,7 +1700,6 @@ class _DepositTab extends StatelessWidget {
                                   const Text(
                                     'Total Amount',
                                     style: TextStyle(
-                                      fontFamily: 'Poppins',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: CottageColors.primary,
@@ -1744,7 +1720,6 @@ class _DepositTab extends StatelessWidget {
                                   Text(
                                     '${entry.amount.toStringAsFixed(0)} tk',
                                     style: TextStyle(
-                                      fontFamily: 'Poppins',
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: surface.foreground,
@@ -1843,7 +1818,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                           const Text(
                             'Monthly Details',
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
                               color: Colors.white,
@@ -1859,7 +1833,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                             child: Text(
                               monthText,
                               style: const TextStyle(
-                                fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
                                 color: CottageColors.primary,
@@ -1875,7 +1848,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                       child: Text(
                         "Full meal, deposit and cost records for every member in the active month.",
                         style: TextStyle(
-                          fontFamily: 'Poppins',
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
                           color: surface.foreground.withValues(alpha: 0.8),
@@ -1910,7 +1882,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                           Text(
                             'Monthly Details',
                             style: TextStyle(
-                              fontFamily: 'Poppins',
                               fontWeight: FontWeight.w800,
                               fontSize: 18,
                               color: surface.foreground,
@@ -1926,7 +1897,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                             child: Text(
                               monthText,
                               style: const TextStyle(
-                                fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
                                 color: Colors.white,
@@ -1959,7 +1929,6 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                     label: Text(
                       'Download',
                       style: TextStyle(
-                        fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: surface.foreground,

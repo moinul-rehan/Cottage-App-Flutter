@@ -45,7 +45,7 @@ class PushNotificationService {
     }
 
     await _local.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+      const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
     );
     await _local
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
@@ -110,10 +110,10 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
     await _local.show(
-      id: notification.hashCode,
-      title: notification.title,
-      body: notification.body,
-      notificationDetails: const NotificationDetails(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      const NotificationDetails(
         android: AndroidNotificationDetails(_channelId, _channelName, importance: Importance.high, priority: Priority.high),
       ),
     );

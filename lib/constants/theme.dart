@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Brand constants that stay fixed regardless of light/dark mode -- mirrors
 /// the CSS custom properties in the web app's src/app/globals.css :root
@@ -179,12 +180,16 @@ ThemeData buildCottageTheme(Brightness brightness) {
     error: CottageColors.destructive,
   );
 
+  final plusJakartaTextTheme = GoogleFonts.plusJakartaSansTextTheme(
+    ThemeData(brightness: brightness).textTheme,
+  );
+
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: surface.background,
-    fontFamily: 'Roboto',
+    fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
     extensions: [surface],
     cardTheme: CardThemeData(
       color: surface.card,
@@ -228,9 +233,9 @@ ThemeData buildCottageTheme(Brightness brightness) {
       elevation: 0,
       centerTitle: false,
     ),
-    textTheme: TextTheme(
-      bodyMedium: TextStyle(color: surface.foreground),
-      titleLarge: TextStyle(color: surface.foreground, fontWeight: FontWeight.w700),
+    textTheme: plusJakartaTextTheme.copyWith(
+      bodyMedium: plusJakartaTextTheme.bodyMedium?.copyWith(color: surface.foreground),
+      titleLarge: plusJakartaTextTheme.titleLarge?.copyWith(color: surface.foreground, fontWeight: FontWeight.w700),
     ),
   );
 }
