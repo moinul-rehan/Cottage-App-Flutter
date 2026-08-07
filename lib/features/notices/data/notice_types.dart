@@ -9,24 +9,27 @@ enum NoticePriority { critical, high, normal, low }
 
 enum NoticeVisibility { everyone, specific, selected, admins }
 
-enum PinDuration { none, untilManual, oneDay, threeDay, untilDate, untilExpires }
+enum PinDuration {
+  none,
+  untilManual,
+  oneDay,
+  threeDay,
+  untilDate,
+  untilExpires,
+}
 
 enum NoticeStatus { scheduled, published, expired, archived }
 
 NoticeType noticeTypeFromString(String s) => NoticeType.values.firstWhere(
-      (t) => t.name == s,
-      orElse: () => NoticeType.general,
-    );
+  (t) => t.name == s,
+  orElse: () => NoticeType.general,
+);
 
-NoticePriority noticePriorityFromString(String s) => NoticePriority.values.firstWhere(
-      (p) => p.name == s,
-      orElse: () => NoticePriority.normal,
-    );
+NoticePriority noticePriorityFromString(String s) => NoticePriority.values
+    .firstWhere((p) => p.name == s, orElse: () => NoticePriority.normal);
 
-NoticeVisibility noticeVisibilityFromString(String s) => NoticeVisibility.values.firstWhere(
-      (v) => v.name == s,
-      orElse: () => NoticeVisibility.everyone,
-    );
+NoticeVisibility noticeVisibilityFromString(String s) => NoticeVisibility.values
+    .firstWhere((v) => v.name == s, orElse: () => NoticeVisibility.everyone);
 
 PinDuration pinDurationFromString(String s) {
   switch (s) {
@@ -50,7 +53,12 @@ class NoticeTypeMeta {
   final IconData icon;
   final Color chipBg;
   final Color chipFg;
-  const NoticeTypeMeta({required this.label, required this.icon, required this.chipBg, required this.chipFg});
+  const NoticeTypeMeta({
+    required this.label,
+    required this.icon,
+    required this.chipBg,
+    required this.chipFg,
+  });
 }
 
 const Map<NoticeType, NoticeTypeMeta> kNoticeTypeMeta = {
@@ -98,14 +106,44 @@ class NoticePriorityMeta {
   final Color pillBg;
   final Color pillFg;
   final Color pinColor;
-  const NoticePriorityMeta({required this.label, required this.order, required this.pillBg, required this.pillFg, required this.pinColor});
+  const NoticePriorityMeta({
+    required this.label,
+    required this.order,
+    required this.pillBg,
+    required this.pillFg,
+    required this.pinColor,
+  });
 }
 
 const Map<NoticePriority, NoticePriorityMeta> kPriorityMeta = {
-  NoticePriority.critical: NoticePriorityMeta(label: 'Critical', order: 0, pillBg: Color(0xFFFEE2E2), pillFg: Color(0xFFB91C1C), pinColor: Color(0xFFDC2626)),
-  NoticePriority.high: NoticePriorityMeta(label: 'High', order: 1, pillBg: Color(0xFFFEF3C7), pillFg: Color(0xFFB45309), pinColor: Color(0xFFF59E0B)),
-  NoticePriority.normal: NoticePriorityMeta(label: 'Normal', order: 2, pillBg: Color(0xFFE0F2FE), pillFg: Color(0xFF0369A1), pinColor: Color(0xFF0EA5E9)),
-  NoticePriority.low: NoticePriorityMeta(label: 'Low', order: 3, pillBg: Color(0xFFF1F5F9), pillFg: Color(0xFF64748B), pinColor: Color(0xFF94A3B8)),
+  NoticePriority.critical: NoticePriorityMeta(
+    label: 'Critical',
+    order: 0,
+    pillBg: Color(0xFFFEE2E2),
+    pillFg: Color(0xFFB91C1C),
+    pinColor: Color(0xFFDC2626),
+  ),
+  NoticePriority.high: NoticePriorityMeta(
+    label: 'High',
+    order: 1,
+    pillBg: Color(0xFFFEF3C7),
+    pillFg: Color(0xFFB45309),
+    pinColor: Color(0xFFF59E0B),
+  ),
+  NoticePriority.normal: NoticePriorityMeta(
+    label: 'Normal',
+    order: 2,
+    pillBg: Color(0xFFE0F2FE),
+    pillFg: Color(0xFF0369A1),
+    pinColor: Color(0xFF0EA5E9),
+  ),
+  NoticePriority.low: NoticePriorityMeta(
+    label: 'Low',
+    order: 3,
+    pillBg: Color(0xFFF1F5F9),
+    pillFg: Color(0xFF64748B),
+    pinColor: Color(0xFF94A3B8),
+  ),
 };
 
 const Map<NoticeVisibility, String> kVisibilityLabel = {
@@ -172,7 +210,12 @@ bool isEffectivelyPinned({
   DateTime? now,
 }) {
   if (!isPinned || archivedAt != null) return false;
-  final end = computePinEndAt(pinDuration: pinDuration, pinUntilDate: pinUntilDate, publishAt: publishAt, expiresAt: expiresAt);
+  final end = computePinEndAt(
+    pinDuration: pinDuration,
+    pinUntilDate: pinUntilDate,
+    publishAt: publishAt,
+    expiresAt: expiresAt,
+  );
   final n = now ?? DateTime.now();
   return end == null || !n.isAfter(end);
 }

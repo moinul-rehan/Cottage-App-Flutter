@@ -22,7 +22,8 @@ class MealScreen extends StatefulWidget {
   State<MealScreen> createState() => _MealScreenState();
 }
 
-class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateMixin {
+class _MealScreenState extends State<MealScreen>
+    with SingleTickerProviderStateMixin {
   final _mealService = MealService();
   final _dashService = DashboardService();
   final _memberService = MemberService();
@@ -40,7 +41,7 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
       _showAddDeposit(data);
     }
   }
-  
+
   late TabController _tabController;
   late Future<_MealData> _future;
   int _activeTabIndex = 0;
@@ -106,8 +107,18 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
       final year = parts[0];
       final monthInt = int.tryParse(parts[1]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return monthKey;
       return '${months[monthInt - 1]} $year';
@@ -124,8 +135,18 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
       final monthInt = int.tryParse(parts[1]) ?? 1;
       final day = int.tryParse(parts[2]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return dateStr;
       return '$day ${months[monthInt - 1]}, $year';
@@ -134,313 +155,159 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
     }
   }
 
+  String _isoDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String? _memberName(List<Profile> members, String? id) {
+    if (id == null) return null;
+    for (final m in members) {
+      if (m.id == id) return m.displayName;
+    }
+    return null;
+  }
+
+  /// Flat list-picker sheet for the "Select member" drawer fields, matching
+  /// the Figma "Add Deposit"/"Add Bazar Cost" drawers' member field, which
+  /// is a plain tappable box rather than a native dropdown.
+  Future<String?> _pickMember(
+    BuildContext ctx,
+    List<Profile> members,
+    String? currentId,
+  ) {
+    return showCottageSheet<String>(
+      context: ctx,
+      builder: (_) => ListView(
+        shrinkWrap: true,
+        children: [
+          for (final m in members)
+            ListTile(
+              title: Text(m.displayName),
+              trailing: m.id == currentId
+                  ? const Icon(Icons.check, color: CottageColors.primary)
+                  : null,
+              onTap: () => Navigator.pop(ctx, m.id),
+            ),
+        ],
+      ),
+    );
+  }
+
   // --- Meal Add/Edit Modals ---
+
+  /// Existing logged counts for [date], falling back to 0 for members with
+  /// no entry yet -- used both to seed the Add Meal drawer and to refresh
+  /// it whenever the picked date changes, so reopening/re-dating the
+  /// drawer shows what's already logged instead of always resetting to 0
+  /// (which would silently zero out real counts on save).
+  Map<String, double> _countsForDate(_MealData data, String date) {
+    final byUser = {
+      for (final m in data.meals)
+        if (m.date == date) m.userId: m.count,
+    };
+    return {for (final m in data.members) m.id: byUser[m.id] ?? 0};
+  }
 
   void _showAddMeal(_MealData data) {
     final now = DateTime.now();
-    String selectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final surface = context.surface;
-
-    // Map of memberId -> controllers
-    final lunchControllers = <String, TextEditingController>{};
-    final dinnerControllers = <String, TextEditingController>{};
-
-    for (final member in data.members) {
-      lunchControllers[member.id] = TextEditingController(text: '0');
-      dinnerControllers[member.id] = TextEditingController(text: '0');
-    }
-
-    String formatDateForField(String dateStr) {
-      try {
-        final parts = dateStr.split('-');
-        if (parts.length < 3) return dateStr;
-        return '${parts[1]}/${parts[2]}/${parts[0]}';
-      } catch (_) {
-        return dateStr;
-      }
-    }
+    String selectedDate = _isoDate(now);
+    var counts = _countsForDate(data, selectedDate);
 
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CottageSheetContent(
-          title: '', // Empty to use custom title row with close button
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '+ Add Meal',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: surface.foreground,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Date',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DrawerHeader(
+                icon: Icons.restaurant_menu_rounded,
+                title: 'Add Meal',
+                onClose: () => Navigator.pop(ctx),
               ),
-            ),
-            const SizedBox(height: 6),
-            InkWell(
-              onTap: () async {
-                final currentParsed = DateTime.tryParse(selectedDate) ?? now;
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: currentParsed,
-                  firstDate: DateTime(now.year, now.month, 1),
-                  lastDate: now,
-                );
-                if (picked != null) {
-                  setSheetState(() {
-                    selectedDate =
-                        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: surface.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: CottageColors.primary, width: 1.5),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      formatDateForField(selectedDate),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: surface.foreground,
-                      ),
-                    ),
-                    const Icon(Icons.calendar_today_outlined, size: 20, color: CottageColors.primary),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Header Row: Member, Lunch, Dinner, Total
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Member',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: surface.mutedForeground,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Lunch',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: surface.mutedForeground,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Dinner',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: surface.mutedForeground,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Total',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: surface.mutedForeground,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Divider(height: 1, color: surface.border, thickness: 0.8),
-            const SizedBox(height: 8),
-            // List of member rows
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: data.members.length,
-                itemBuilder: (ctx, index) {
-                  final member = data.members[index];
-                  final lunch = double.tryParse(lunchControllers[member.id]!.text) ?? 0.0;
-                  final dinner = double.tryParse(dinnerControllers[member.id]!.text) ?? 0.0;
-                  final total = lunch + dinner;
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: surface.border, width: 0.8),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            member.displayName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: surface.foreground,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Center(
-                            child: Container(
-                              width: 70,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: surface.background,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: surface.border, width: 0.8),
-                              ),
-                              child: TextField(
-                                controller: lunchControllers[member.id],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: surface.foreground,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                  fillColor: Colors.transparent,
-                                  filled: false,
-                                ),
-                                onChanged: (_) => setSheetState(() {}),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Center(
-                            child: Container(
-                              width: 70,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: surface.background,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: surface.border, width: 0.8),
-                              ),
-                              child: TextField(
-                                controller: dinnerControllers[member.id],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: surface.foreground,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                  fillColor: Colors.transparent,
-                                  filled: false,
-                                ),
-                                onChanged: (_) => setSheetState(() {}),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Text(
-                            total.toStringAsFixed(total % 1 == 0 ? 0 : 1),
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: surface.foreground,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              const SizedBox(height: 16),
+              _DrawerDateField(
+                label: 'Date',
+                date: _formatDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: DateTime.tryParse(selectedDate) ?? now,
+                    firstDate: DateTime(now.year, now.month, 1),
+                    lastDate: now,
                   );
+                  if (picked != null) {
+                    setSheetState(() {
+                      selectedDate = _isoDate(picked);
+                      counts = _countsForDate(data, selectedDate);
+                    });
+                  }
                 },
               ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                for (final member in data.members) {
-                  final lunch = double.tryParse(lunchControllers[member.id]!.text) ?? 0.0;
-                  final dinner = double.tryParse(dinnerControllers[member.id]!.text) ?? 0.0;
-                  final count = lunch + dinner;
-
-                  await _mealService.upsertMeal(
-                    userId: member.id,
-                    monthKey: data.monthKey,
-                    date: selectedDate,
-                    count: count,
-                    cottageId: data.profile.cottageId,
-                  );
-                }
-                _refresh();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: CottageColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              const SizedBox(height: 16),
+              const Text(
+                'Meal count per member',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Color(0xFF17191E),
+                ),
               ),
-              child: const Text('Save meal counts'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              for (final member in data.members) ...[
+                _MemberMealRow(
+                  member: member,
+                  count: counts[member.id]!,
+                  onChanged: (v) => setSheetState(() => counts[member.id] = v),
+                ),
+                const SizedBox(height: 16),
+              ],
+              _DrawerSaveButton(
+                label: 'Save Meal Count',
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  for (final member in data.members) {
+                    await _mealService.upsertMeal(
+                      userId: member.id,
+                      monthKey: data.monthKey,
+                      date: selectedDate,
+                      count: counts[member.id]!,
+                      cottageId: data.profile.cottageId,
+                    );
+                  }
+                  _refresh();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showEditMealForDate(String date, List<DailyMeal> mealsForDate, List<Profile> members, String cottageId, String monthKey) {
+  void _showEditMealForDate(
+    String date,
+    List<DailyMeal> mealsForDate,
+    List<Profile> members,
+    String cottageId,
+    String monthKey,
+  ) {
     final controllers = <String, TextEditingController>{};
     for (final member in members) {
       final meal = mealsForDate.firstWhere(
         (m) => m.userId == member.id,
-        orElse: () => DailyMeal(userId: member.id, monthKey: monthKey, date: date, count: 0),
+        orElse: () => DailyMeal(
+          userId: member.id,
+          monthKey: monthKey,
+          date: date,
+          count: 0,
+        ),
       );
       controllers[member.id] = TextEditingController(
-        text: meal.count > 0 ? meal.count.toStringAsFixed(meal.count % 1 == 0 ? 0 : 1) : '0',
+        text: meal.count > 0
+            ? meal.count.toStringAsFixed(meal.count % 1 == 0 ? 0 : 1)
+            : '0',
       );
     }
 
@@ -462,7 +329,10 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                         Expanded(
                           child: Text(
                             member.displayName,
-                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -470,7 +340,9 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                           width: 80,
                           child: TextField(
                             controller: controllers[member.id],
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             textAlign: TextAlign.center,
                             decoration: const InputDecoration(
                               contentPadding: EdgeInsets.symmetric(vertical: 8),
@@ -488,7 +360,8 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             onPressed: () async {
               Navigator.pop(context);
               for (final member in members) {
-                final count = double.tryParse(controllers[member.id]?.text ?? '0') ?? 0;
+                final count =
+                    double.tryParse(controllers[member.id]?.text ?? '0') ?? 0;
                 // If count is changed (or is non-zero), upsert it
                 await _mealService.upsertMeal(
                   userId: member.id,
@@ -514,92 +387,97 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
     final amountCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final now = DateTime.now();
-    String selectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    bool creditDeposit = false;
+    String selectedDate = _isoDate(now);
 
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CottageSheetContent(
-          title: 'Add Bazaar Entry',
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: selectedUserId,
-              decoration: const InputDecoration(labelText: 'Shopper'),
-              items: data.members
-                  .map((m) => DropdownMenuItem(value: m.id, child: Text(m.displayName)))
-                  .toList(),
-              onChanged: (v) => setSheetState(() => selectedUserId = v),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: amountCtrl,
-              decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descCtrl,
-              decoration: const InputDecoration(labelText: 'Items (Description)'),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: now,
-                  firstDate: DateTime(now.year, now.month, 1),
-                  lastDate: now,
-                );
-                if (picked != null) {
-                  setSheetState(() {
-                    selectedDate =
-                        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                  });
-                }
-              },
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Date'),
-                child: Text(_formatDate(selectedDate)),
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DrawerHeader(
+                icon: Icons.shopping_basket_outlined,
+                title: 'Add Bazar Cost',
+                onClose: () => Navigator.pop(ctx),
               ),
-            ),
-            const SizedBox(height: 12),
-            CheckboxListTile(
-              title: const Text('Cost deposit to this member', style: TextStyle(fontSize: 14)),
-              value: creditDeposit,
-              onChanged: (v) => setSheetState(() => creditDeposit = v ?? false),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-              activeColor: CottageColors.primary,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (selectedUserId == null || amount <= 0) return;
-                Navigator.pop(context);
-                await _mealService.addBazaarEntry(
-                  userId: selectedUserId!,
-                  monthKey: data.monthKey,
-                  amount: amount,
-                  date: selectedDate,
-                  cottageId: data.profile.cottageId,
-                  description: descCtrl.text.trim(),
-                  creditDeposit: creditDeposit,
-                );
-                _refresh();
-              },
-              child: const Text('Add Entry'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              _DrawerDateField(
+                label: 'Date',
+                date: _formatDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: DateTime.tryParse(selectedDate) ?? now,
+                    firstDate: DateTime(now.year, now.month, 1),
+                    lastDate: now,
+                  );
+                  if (picked != null)
+                    setSheetState(() => selectedDate = _isoDate(picked));
+                },
+              ),
+              const SizedBox(height: 16),
+              _DrawerMemberField(
+                label: 'Member',
+                selectedName: _memberName(data.members, selectedUserId),
+                onTap: () async {
+                  final picked = await _pickMember(
+                    ctx,
+                    data.members,
+                    selectedUserId,
+                  );
+                  if (picked != null)
+                    setSheetState(() => selectedUserId = picked);
+                },
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Items Purchased',
+                controller: descCtrl,
+                hint: 'Rice, Egg, Rice, Egg, Oil',
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Total Amount',
+                controller: amountCtrl,
+                hint: '0.00',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                prefixText: '৳',
+              ),
+              const SizedBox(height: 16),
+              _DrawerSaveButton(
+                label: 'Save Bazar Cost',
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text) ?? 0;
+                  if (selectedUserId == null || amount <= 0) return;
+                  Navigator.pop(ctx);
+                  await _mealService.addBazaarEntry(
+                    userId: selectedUserId!,
+                    monthKey: data.monthKey,
+                    amount: amount,
+                    date: selectedDate,
+                    cottageId: data.profile.cottageId,
+                    description: descCtrl.text.trim(),
+                  );
+                  _refresh();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showEditBazaar(BazaarEntry entry) {
-    final amountCtrl = TextEditingController(text: entry.amount.toStringAsFixed(0));
+    final amountCtrl = TextEditingController(
+      text: entry.amount.toStringAsFixed(0),
+    );
     final descCtrl = TextEditingController(text: entry.description ?? '');
     String selectedDate = entry.date;
 
@@ -612,22 +490,31 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             TextField(
               controller: amountCtrl,
               decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: descCtrl,
-              decoration: const InputDecoration(labelText: 'Items (Description)'),
+              decoration: const InputDecoration(
+                labelText: 'Items (Description)',
+              ),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
             InkWell(
               onTap: () async {
-                final currentParsed = DateTime.tryParse(selectedDate) ?? DateTime.now();
+                final currentParsed =
+                    DateTime.tryParse(selectedDate) ?? DateTime.now();
                 final picked = await showDatePicker(
                   context: ctx,
                   initialDate: currentParsed,
-                  firstDate: DateTime(currentParsed.year, currentParsed.month, 1),
+                  firstDate: DateTime(
+                    currentParsed.year,
+                    currentParsed.month,
+                    1,
+                  ),
                   lastDate: DateTime.now(),
                 );
                 if (picked != null) {
@@ -656,7 +543,9 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                       side: const BorderSide(color: CottageColors.destructive),
                       foregroundColor: CottageColors.destructive,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                     child: const Text('Delete'),
                   ),
@@ -697,22 +586,43 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
         title: 'Bazaar Detail',
         children: [
           ListTile(
-            title: const Text('Shopper', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            subtitle: Text(entry.memberName ?? 'Member', style: const TextStyle(fontSize: 15)),
+            title: const Text(
+              'Shopper',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+            subtitle: Text(
+              entry.memberName ?? 'Member',
+              style: const TextStyle(fontSize: 15),
+            ),
             contentPadding: EdgeInsets.zero,
           ),
           ListTile(
-            title: const Text('Amount', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            subtitle: Text('${entry.amount.toStringAsFixed(2)} tk', style: const TextStyle(fontSize: 15)),
+            title: const Text(
+              'Amount',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+            subtitle: Text(
+              '${entry.amount.toStringAsFixed(2)} tk',
+              style: const TextStyle(fontSize: 15),
+            ),
             contentPadding: EdgeInsets.zero,
           ),
           ListTile(
-            title: const Text('Date', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-            subtitle: Text(_formatDate(entry.date), style: const TextStyle(fontSize: 15)),
+            title: const Text(
+              'Date',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+            subtitle: Text(
+              _formatDate(entry.date),
+              style: const TextStyle(fontSize: 15),
+            ),
             contentPadding: EdgeInsets.zero,
           ),
           ListTile(
-            title: const Text('Items/Description', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            title: const Text(
+              'Items/Description',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+            ),
             subtitle: Text(
               (entry.description != null && entry.description!.isNotEmpty)
                   ? entry.description!
@@ -738,81 +648,98 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
     final now = DateTime.now();
-    String selectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    String selectedDate = _isoDate(now);
 
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CottageSheetContent(
-          title: 'Add Meal Deposit',
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: selectedUserId,
-              decoration: const InputDecoration(labelText: 'Member'),
-              items: data.members
-                  .map((m) => DropdownMenuItem(value: m.id, child: Text(m.displayName)))
-                  .toList(),
-              onChanged: (v) => setSheetState(() => selectedUserId = v),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: amountCtrl,
-              decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteCtrl,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: now,
-                  firstDate: DateTime(now.year, now.month, 1),
-                  lastDate: now,
-                );
-                if (picked != null) {
-                  setSheetState(() {
-                    selectedDate =
-                        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                  });
-                }
-              },
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Date'),
-                child: Text(_formatDate(selectedDate)),
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DrawerHeader(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Add Deposit',
+                onClose: () => Navigator.pop(ctx),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (selectedUserId == null || amount <= 0) return;
-                Navigator.pop(context);
-                await _mealService.addMealDeposit(
-                  userId: selectedUserId!,
-                  monthKey: data.monthKey,
-                  amount: amount,
-                  date: selectedDate,
-                  cottageId: data.profile.cottageId,
-                  note: noteCtrl.text.trim(),
-                );
-                _refresh();
-              },
-              child: const Text('Add Deposit'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              _DrawerMemberField(
+                label: 'Member',
+                selectedName: _memberName(data.members, selectedUserId),
+                onTap: () async {
+                  final picked = await _pickMember(
+                    ctx,
+                    data.members,
+                    selectedUserId,
+                  );
+                  if (picked != null)
+                    setSheetState(() => selectedUserId = picked);
+                },
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Amount',
+                controller: amountCtrl,
+                hint: '0.00',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                prefixText: '৳',
+              ),
+              const SizedBox(height: 16),
+              _DrawerDateField(
+                label: 'Date',
+                date: _formatDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: DateTime.tryParse(selectedDate) ?? now,
+                    firstDate: DateTime(now.year, now.month, 1),
+                    lastDate: now,
+                  );
+                  if (picked != null)
+                    setSheetState(() => selectedDate = _isoDate(picked));
+                },
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Note (optional)',
+                controller: noteCtrl,
+                hint: 'e.g. Cash handover',
+                maxLines: 3,
+                required: false,
+              ),
+              const SizedBox(height: 16),
+              _DrawerSaveButton(
+                label: 'Save Deposit',
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text) ?? 0;
+                  if (selectedUserId == null || amount <= 0) return;
+                  Navigator.pop(ctx);
+                  await _mealService.addMealDeposit(
+                    userId: selectedUserId!,
+                    monthKey: data.monthKey,
+                    amount: amount,
+                    date: selectedDate,
+                    cottageId: data.profile.cottageId,
+                    note: noteCtrl.text.trim(),
+                  );
+                  _refresh();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showEditDeposit(MealDeposit entry) {
-    final amountCtrl = TextEditingController(text: entry.amount.toStringAsFixed(0));
+    final amountCtrl = TextEditingController(
+      text: entry.amount.toStringAsFixed(0),
+    );
     final noteCtrl = TextEditingController(text: entry.note ?? '');
     String selectedDate = entry.date;
 
@@ -825,7 +752,9 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             TextField(
               controller: amountCtrl,
               decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -836,11 +765,16 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
             const SizedBox(height: 12),
             InkWell(
               onTap: () async {
-                final currentParsed = DateTime.tryParse(selectedDate) ?? DateTime.now();
+                final currentParsed =
+                    DateTime.tryParse(selectedDate) ?? DateTime.now();
                 final picked = await showDatePicker(
                   context: ctx,
                   initialDate: currentParsed,
-                  firstDate: DateTime(currentParsed.year, currentParsed.month, 1),
+                  firstDate: DateTime(
+                    currentParsed.year,
+                    currentParsed.month,
+                    1,
+                  ),
                   lastDate: DateTime.now(),
                 );
                 if (picked != null) {
@@ -869,7 +803,9 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                       side: const BorderSide(color: CottageColors.destructive),
                       foregroundColor: CottageColors.destructive,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                     child: const Text('Delete'),
                   ),
@@ -915,17 +851,43 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
       ),
       child: Row(
         children: [
-          Expanded(child: _buildTabItem(0, 'Meal Details', Icons.restaurant_menu_rounded, surface)),
+          Expanded(
+            child: _buildTabItem(
+              0,
+              'Meal Details',
+              Icons.restaurant_menu_rounded,
+              surface,
+            ),
+          ),
           const SizedBox(width: 3.2),
-          Expanded(child: _buildTabItem(1, 'Bazar', Icons.shopping_basket_outlined, surface)),
+          Expanded(
+            child: _buildTabItem(
+              1,
+              'Bazar',
+              Icons.shopping_basket_outlined,
+              surface,
+            ),
+          ),
           const SizedBox(width: 3.2),
-          Expanded(child: _buildTabItem(2, 'Deposit', Icons.account_balance_wallet_outlined, surface)),
+          Expanded(
+            child: _buildTabItem(
+              2,
+              'Deposit',
+              Icons.account_balance_wallet_outlined,
+              surface,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(int index, String title, IconData icon, CottageSurface surface) {
+  Widget _buildTabItem(
+    int index,
+    String title,
+    IconData icon,
+    CottageSurface surface,
+  ) {
     final active = _activeTabIndex == index;
     return GestureDetector(
       onTap: () {
@@ -990,7 +952,11 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 40, color: CottageColors.destructive),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Could not load meal data.\n${snapshot.error}',
@@ -998,7 +964,10 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                       style: TextStyle(color: surface.foreground),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _refresh, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
@@ -1021,7 +990,10 @@ class _MealScreenState extends State<MealScreen> with SingleTickerProviderStateM
                     tabBar: _buildTabBar(surface),
                     monthText: _formatMonth(data.monthKey),
                     onDownload: () {
-                      showToast(context, 'Summary report downloaded successfully');
+                      showToast(
+                        context,
+                        'Summary report downloaded successfully',
+                      );
                     },
                     safeAreaTop: MediaQuery.of(context).padding.top,
                   ),
@@ -1110,8 +1082,18 @@ class _DailyMealsTab extends StatelessWidget {
       final monthInt = int.tryParse(parts[1]) ?? 1;
       final day = int.tryParse(parts[2]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return dateStr;
       return '$day ${months[monthInt - 1]}, $year';
@@ -1142,19 +1124,24 @@ class _DailyMealsTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: context.responsivePadding, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.responsivePadding,
+          vertical: 8,
+        ),
         itemCount: dates.length + 1,
         itemBuilder: (context, index) {
           if (index == dates.length) return const SizedBox(height: 80);
           final date = dates[index];
           final entries = grouped[date]!;
-          
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16), // Gap between cards
-            padding: const EdgeInsets.all(4), // Figma has 4px padding for the card wrapper
+            padding: const EdgeInsets.all(
+              4,
+            ), // Figma has 4px padding for the card wrapper
             decoration: BoxDecoration(
               color: surface.card,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8), // Figma: 8.043px
               border: Border.all(color: surface.border, width: 0.8),
             ),
             child: Column(
@@ -1177,7 +1164,8 @@ class _DailyMealsTab extends StatelessWidget {
                           _formatDate(date),
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                            fontWeight:
+                                FontWeight.w400, // Figma: Poppins Regular
                             color: surface.foreground,
                           ),
                         ),
@@ -1186,7 +1174,11 @@ class _DailyMealsTab extends StatelessWidget {
                     const SizedBox(width: 4),
                     IconButton(
                       onPressed: () => onEditMeal(date, entries),
-                      icon: const Icon(Icons.edit_outlined, color: CottageColors.primary, size: 18),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: CottageColors.primary,
+                        size: 18,
+                      ),
                       style: IconButton.styleFrom(
                         backgroundColor: surface.background,
                         shape: RoundedRectangleBorder(
@@ -1199,59 +1191,74 @@ class _DailyMealsTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4), // 4px gap in Figma
-                // Card Grid of Members & Meal Counts
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: entries.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
-                    childAspectRatio: 109 / 63, // Exact width/height from Figma
+                // Card grid of members & meal counts. Figma's row is a flex
+                // row of up to 3 equal-width ("flex-1", fill) tiles that
+                // each hug their own content height -- reproduced here as a
+                // Column of Rows (chunked 3 at a time) with Expanded tiles,
+                // rather than a fixed-aspect-ratio GridView, so a trailing
+                // partial row (e.g. 4 or 5 members) still fills the row
+                // width evenly instead of leaving empty grid cells.
+                for (var i = 0; i < entries.length; i += 3) ...[
+                  if (i > 0) const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var j = i; j < i + 3 && j < entries.length; j++) ...[
+                        if (j > i) const SizedBox(width: 4),
+                        Expanded(child: _MealCountTile(entry: entries[j])),
+                      ],
+                    ],
                   ),
-                  itemBuilder: (context, idx) {
-                    final entry = entries[idx];
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: surface.background,
-                        border: Border.all(color: surface.border, width: 0.8),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            entry.memberName ?? 'Member',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: CottageColors.primary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Divider(height: 1, color: surface.border, thickness: 0.8),
-                          const SizedBox(height: 4),
-                          Text(
-                            entry.count.toStringAsFixed(entry.count % 1 == 0 ? 0 : 1),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600, // Matched font weight
-                              color: surface.foreground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                )
+                ],
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MealCountTile extends StatelessWidget {
+  final DailyMeal entry;
+  const _MealCountTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = context.surface;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: surface.background,
+        border: Border.all(color: surface.border, width: 0.8),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            entry.memberName ?? 'Member',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: CottageColors.primary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Divider(height: 1, color: surface.border, thickness: 0.8),
+          const SizedBox(height: 4),
+          Text(
+            entry.count.toStringAsFixed(entry.count % 1 == 0 ? 0 : 1),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: surface.foreground,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1280,8 +1287,18 @@ class _BazaarTab extends StatelessWidget {
       final monthInt = int.tryParse(parts[1]) ?? 1;
       final day = int.tryParse(parts[2]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return dateStr;
       return '$day ${months[monthInt - 1]}, $year';
@@ -1305,14 +1322,19 @@ class _BazaarTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: context.responsivePadding, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.responsivePadding,
+          vertical: 8,
+        ),
         itemCount: data.bazaar.length + 1,
         itemBuilder: (context, index) {
           if (index == data.bazaar.length) return const SizedBox(height: 80);
           final entry = data.bazaar[index];
-          
+
           return Container(
-            margin: const EdgeInsets.only(bottom: 16), // Same gap as Meal Detail
+            margin: const EdgeInsets.only(
+              bottom: 16,
+            ), // Same gap as Meal Detail
             padding: const EdgeInsets.all(4), // 4px padding for outer card
             decoration: BoxDecoration(
               color: surface.card,
@@ -1350,12 +1372,19 @@ class _BazaarTab extends StatelessWidget {
                       children: [
                         IconButton(
                           onPressed: () => onShowInfo(entry),
-                          icon: Icon(Icons.visibility_outlined, color: surface.foreground, size: 18),
+                          icon: Icon(
+                            Icons.visibility_outlined,
+                            color: surface.foreground,
+                            size: 18,
+                          ),
                           style: IconButton.styleFrom(
                             backgroundColor: surface.background,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(color: surface.border, width: 0.8),
+                              side: BorderSide(
+                                color: surface.border,
+                                width: 0.8,
+                              ),
                             ),
                             fixedSize: const Size(38, 38),
                           ),
@@ -1363,18 +1392,25 @@ class _BazaarTab extends StatelessWidget {
                         const SizedBox(width: 4),
                         IconButton(
                           onPressed: () => onEditBazaar(entry),
-                          icon: const Icon(Icons.edit_outlined, color: CottageColors.primary, size: 18),
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: CottageColors.primary,
+                            size: 18,
+                          ),
                           style: IconButton.styleFrom(
                             backgroundColor: surface.background,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(color: surface.border, width: 0.8),
+                              side: BorderSide(
+                                color: surface.border,
+                                width: 0.8,
+                              ),
                             ),
                             fixedSize: const Size(38, 38),
                           ),
                         ),
                       ],
-                    )
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4), // 4px gap from Figma
@@ -1397,12 +1433,22 @@ class _BazaarTab extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 17.5, // 35px diameter
-                            backgroundColor: CottageColors.primary.withValues(alpha: 0.1),
-                            backgroundImage: entry.avatarUrl != null && entry.avatarUrl!.isNotEmpty
+                            backgroundColor: CottageColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            backgroundImage:
+                                entry.avatarUrl != null &&
+                                    entry.avatarUrl!.isNotEmpty
                                 ? NetworkImage(entry.avatarUrl!)
                                 : null,
-                            child: entry.avatarUrl == null || entry.avatarUrl!.isEmpty
-                                ? const Icon(Icons.person, color: CottageColors.primary, size: 20)
+                            child:
+                                entry.avatarUrl == null ||
+                                    entry.avatarUrl!.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    color: CottageColors.primary,
+                                    size: 20,
+                                  )
                                 : null,
                           ),
                           const SizedBox(height: 8),
@@ -1432,15 +1478,24 @@ class _BazaarTab extends StatelessWidget {
                             // Items description speech bubble
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFDEFEC), // Soft peach tint
-                                  border: Border.all(color: surface.border, width: 0.8),
+                                  color: const Color(
+                                    0xFFFDEFEC,
+                                  ), // Soft peach tint
+                                  border: Border.all(
+                                    color: surface.border,
+                                    width: 0.8,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  (entry.description != null && entry.description!.isNotEmpty)
+                                  (entry.description != null &&
+                                          entry.description!.isNotEmpty)
                                       ? entry.description!
                                       : 'No items detailed',
                                   style: const TextStyle(
@@ -1456,10 +1511,15 @@ class _BazaarTab extends StatelessWidget {
                             // Cost info strip
                             Container(
                               height: 29, // From Figma
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: surface.background,
-                                border: Border.all(color: surface.border, width: 0.8),
+                                border: Border.all(
+                                  color: surface.border,
+                                  width: 0.8,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -1478,7 +1538,10 @@ class _BazaarTab extends StatelessWidget {
                                       height: 21,
                                       decoration: BoxDecoration(
                                         border: Border(
-                                          left: BorderSide(color: surface.border, width: 1.2),
+                                          left: BorderSide(
+                                            color: surface.border,
+                                            width: 1.2,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1531,8 +1594,18 @@ class _DepositTab extends StatelessWidget {
       final monthInt = int.tryParse(parts[1]) ?? 1;
       final day = int.tryParse(parts[2]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return dateStr;
       return '$day ${months[monthInt - 1]}, $year';
@@ -1556,12 +1629,15 @@ class _DepositTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: context.responsivePadding, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.responsivePadding,
+          vertical: 8,
+        ),
         itemCount: data.deposits.length + 1,
         itemBuilder: (context, index) {
           if (index == data.deposits.length) return const SizedBox(height: 80);
           final entry = data.deposits[index];
-          
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16), // Gap between cards
             padding: const EdgeInsets.all(4), // 4px padding for outer card
@@ -1599,7 +1675,11 @@ class _DepositTab extends StatelessWidget {
                     const SizedBox(width: 4),
                     IconButton(
                       onPressed: () => onEditDeposit(entry),
-                      icon: const Icon(Icons.edit_outlined, color: CottageColors.primary, size: 18),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: CottageColors.primary,
+                        size: 18,
+                      ),
                       style: IconButton.styleFrom(
                         backgroundColor: surface.background,
                         shape: RoundedRectangleBorder(
@@ -1631,12 +1711,22 @@ class _DepositTab extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 17.5, // 35px diameter
-                            backgroundColor: CottageColors.primary.withValues(alpha: 0.1),
-                            backgroundImage: entry.avatarUrl != null && entry.avatarUrl!.isNotEmpty
+                            backgroundColor: CottageColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            backgroundImage:
+                                entry.avatarUrl != null &&
+                                    entry.avatarUrl!.isNotEmpty
                                 ? NetworkImage(entry.avatarUrl!)
                                 : null,
-                            child: entry.avatarUrl == null || entry.avatarUrl!.isEmpty
-                                ? const Icon(Icons.person, color: CottageColors.primary, size: 20)
+                            child:
+                                entry.avatarUrl == null ||
+                                    entry.avatarUrl!.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    color: CottageColors.primary,
+                                    size: 20,
+                                  )
                                 : null,
                           ),
                           const SizedBox(height: 8),
@@ -1665,10 +1755,16 @@ class _DepositTab extends StatelessWidget {
                             // Note description bubble
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: surface.background,
-                                  border: Border.all(color: surface.border, width: 0.8),
+                                  border: Border.all(
+                                    color: surface.border,
+                                    width: 0.8,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 alignment: Alignment.centerLeft,
@@ -1689,10 +1785,15 @@ class _DepositTab extends StatelessWidget {
                             // Amount info strip
                             Container(
                               height: 29, // From Figma
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: surface.background,
-                                border: Border.all(color: surface.border, width: 0.8),
+                                border: Border.all(
+                                  color: surface.border,
+                                  width: 0.8,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -1711,7 +1812,10 @@ class _DepositTab extends StatelessWidget {
                                       height: 21,
                                       decoration: BoxDecoration(
                                         border: Border(
-                                          left: BorderSide(color: surface.border, width: 1.2),
+                                          left: BorderSide(
+                                            color: surface.border,
+                                            width: 1.2,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1765,7 +1869,11 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => safeAreaTop + 234.0;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
 
     return Stack(
@@ -1776,11 +1884,14 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
           top: 0,
           left: 0,
           right: 0,
-          height: safeAreaTop + 56 - (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56), 
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
           child: Container(color: CottageColors.primary),
         ),
         Positioned(
-          top: (safeAreaTop + 56) * (1 - progress), 
+          top: (safeAreaTop + 56) * (1 - progress),
           left: 0,
           right: 0,
           bottom: 0,
@@ -1788,13 +1899,13 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
             decoration: BoxDecoration(
               color: surface.card,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20 * (1 - progress)), 
+                topLeft: Radius.circular(20 * (1 - progress)),
                 topRight: Radius.circular(20 * (1 - progress)),
               ),
             ),
           ),
         ),
-        
+
         // Expanded Content (Fades out)
         if (progress < 1.0)
           Positioned(
@@ -1812,7 +1923,11 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                     // Orange Header Content
                     Container(
                       height: safeAreaTop + 56,
-                      padding: EdgeInsets.only(top: safeAreaTop, left: context.responsivePadding, right: context.responsivePadding),
+                      padding: EdgeInsets.only(
+                        top: safeAreaTop,
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                      ),
                       child: Row(
                         children: [
                           const Text(
@@ -1825,7 +1940,10 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(36),
@@ -1844,13 +1962,17 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                     ),
                     // White Card Content (Details)
                     Padding(
-                      padding: EdgeInsets.only(left: context.responsivePadding, right: context.responsivePadding, top: 16),
-                      child: Text(
+                      padding: EdgeInsets.only(
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                        top: 16,
+                      ),
+                      child: const Text(
                         "Full meal, deposit and cost records for every member in the active month.",
                         style: TextStyle(
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
-                          color: surface.foreground.withValues(alpha: 0.8),
+                          color: Color(0xFF303030),
                         ),
                         maxLines: 2,
                       ),
@@ -1873,7 +1995,11 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: IgnorePointer(
                 ignoring: progress < 0.5,
                 child: Container(
-                  padding: EdgeInsets.only(top: safeAreaTop + 8, left: context.responsivePadding, right: context.responsivePadding),
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1887,9 +2013,12 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                               color: surface.foreground,
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: CottageColors.primary,
                               borderRadius: BorderRadius.circular(36),
@@ -1916,7 +2045,7 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
         Positioned(
           left: context.responsivePadding,
           right: context.responsivePadding,
-          bottom: 8, 
+          bottom: 8,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1925,7 +2054,11 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                 children: [
                   OutlinedButton.icon(
                     onPressed: onDownload,
-                    icon: Icon(Icons.download_rounded, color: surface.foreground, size: 18),
+                    icon: Icon(
+                      Icons.download_rounded,
+                      color: surface.foreground,
+                      size: 18,
+                    ),
                     label: Text(
                       'Download',
                       style: TextStyle(
@@ -1936,8 +2069,13 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                     ),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: surface.border),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(1000)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(1000),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       minimumSize: Size.zero,
                     ),
                   ),
@@ -1955,5 +2093,400 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _DynamicMealHeaderDelegate oldDelegate) {
     return true;
+  }
+}
+
+// --- Shared "Add X" drawer building blocks (Figma node 75:1127: "Add Meal
+// - Drawer" / "Add Deposit - Drawer" / "Add Bazar Cost - Drawer") ---
+
+/// Slightly darker orange used by every drawer's primary Save button, per
+/// the Figma spec (#d1593b) -- distinct from [CottageColors.primary] used
+/// on the tab bar/member-initial chips.
+const _kDrawerAccent = Color(0xFFD1593B);
+
+BoxDecoration _drawerFieldDecoration() => BoxDecoration(
+  color: const Color(0xFFFAFAFA),
+  border: Border.all(color: const Color(0xFFEEEEEE)),
+  borderRadius: BorderRadius.circular(10),
+);
+
+/// Drag handle (rendered by [showCottageSheet]) + icon/title/close row
+/// shared by every "Add X" drawer.
+class _DrawerHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onClose;
+  const _DrawerHeader({
+    required this.icon,
+    required this.title,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF17191E)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              color: Color(0xFF17191E),
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: onClose,
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.close, size: 16, color: Color(0xFF17191E)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerFieldLabel extends StatelessWidget {
+  final String text;
+  final bool required;
+  const _DrawerFieldLabel(this.text, {this.required = true});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          text,
+          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+        ),
+        if (required) ...[
+          const SizedBox(width: 2),
+          const Text(
+            '*',
+            style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DrawerDateField extends StatelessWidget {
+  final String label;
+  final String date;
+  final VoidCallback onTap;
+  const _DrawerDateField({
+    required this.label,
+    required this.date,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DrawerFieldLabel(label),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: _drawerFieldDecoration(),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  size: 16,
+                  color: Color(0xFF404040),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    date,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF404040),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Tappable "Select member" box (opens [_MealScreenState._pickMember])
+/// rather than a native dropdown, matching the flat Figma field style.
+class _DrawerMemberField extends StatelessWidget {
+  final String label;
+  final String? selectedName;
+  final VoidCallback onTap;
+  const _DrawerMemberField({
+    required this.label,
+    required this.selectedName,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DrawerFieldLabel(label),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: _drawerFieldDecoration(),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedName ?? 'Select member',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: selectedName == null
+                          ? const Color(0xFFAAAAAA)
+                          : const Color(0xFF404040),
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: Color(0xFF404040),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerTextField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final String? prefixText;
+  final bool required;
+  const _DrawerTextField({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+    this.keyboardType,
+    this.prefixText,
+    this.required = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DrawerFieldLabel(label, required: required),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: _drawerFieldDecoration(),
+          child: Row(
+            crossAxisAlignment: maxLines > 1
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: [
+              if (prefixText != null) ...[
+                Text(
+                  prefixText!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFAAAAAA),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: keyboardType,
+                  maxLines: maxLines,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF404040),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAAAAA),
+                    ),
+                    filled: false,
+                    fillColor: Colors.transparent,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerSaveButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  const _DrawerSaveButton({required this.label, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _kDrawerAccent,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+/// Member row in the "Add Meal" drawer: initial-avatar chip + name +
+/// minus/count/plus stepper (replacing the old lunch/dinner split inputs --
+/// the Figma design and the underlying `daily_meals.count` column are both
+/// a single per-member count, so the stepper is the more faithful UI).
+class _MemberMealRow extends StatelessWidget {
+  final Profile member;
+  final double count;
+  final ValueChanged<double> onChanged;
+  const _MemberMealRow({
+    required this.member,
+    required this.count,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = member.displayName.isNotEmpty
+        ? member.displayName[0].toUpperCase()
+        : '?';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: _drawerFieldDecoration(),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBEAE5),
+              borderRadius: BorderRadius.circular(16),
+              image: (member.avatarUrl != null && member.avatarUrl!.isNotEmpty)
+                  ? DecorationImage(
+                      image: NetworkImage(member.avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: (member.avatarUrl != null && member.avatarUrl!.isNotEmpty)
+                ? null
+                : Text(
+                    initial,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: CottageColors.primary,
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              member.displayName,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: Color(0xFF17191E),
+              ),
+            ),
+          ),
+          _StepperButton(
+            icon: Icons.remove,
+            onTap: count > 0 ? () => onChanged(count - 1) : null,
+          ),
+          SizedBox(
+            width: 24,
+            child: Text(
+              count.toStringAsFixed(count % 1 == 0 ? 0 : 1),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Color(0xFF17191E),
+              ),
+            ),
+          ),
+          _StepperButton(icon: Icons.add, onTap: () => onChanged(count + 1)),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _StepperButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFEFEF),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: onTap == null
+              ? const Color(0xFFBBBBBB)
+              : const Color(0xFF17191E),
+        ),
+      ),
+    );
   }
 }

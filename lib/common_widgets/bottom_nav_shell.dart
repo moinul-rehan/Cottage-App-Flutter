@@ -425,11 +425,17 @@ class _NavTabState extends State<_NavTab> with SingleTickerProviderStateMixin {
             final curve = _controller.status == AnimationStatus.reverse ? _collapseCurve : _expandCurve;
             final t = curve.transform(_controller.value).clamp(0.0, 1.0);
             final active = widget.active;
-            final size = lerpDouble(36, 56, t)!;
+            // Sized to hug the icon exactly: icon + 4px padding on every
+            // side + the 4px ring itself (40 = 24 + 2*4 + 2*4), instead of
+            // a fixed bubble size with whatever leftover space happened to
+            // fall around the icon.
+            final size = lerpDouble(36, 40, t)!;
+            final ringPadding = lerpDouble(0, 8, t)!;
             return Container(
-              margin: EdgeInsets.only(bottom: lerpDouble(0, 32, t)!),
+              margin: EdgeInsets.only(bottom: lerpDouble(0, 64, t)!),
               width: size,
               height: size,
+              padding: EdgeInsets.all(ringPadding),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: active ? CottageColors.primary : Colors.transparent,

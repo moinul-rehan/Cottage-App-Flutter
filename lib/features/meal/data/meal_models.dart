@@ -71,7 +71,10 @@ class BazaarEntry {
       monthKey: map['month_key'] as String,
       amount: (map['amount'] as num).toDouble(),
       description: map['description'] as String?,
-      date: map['entry_date'] as String? ?? map['created_at']?.toString().substring(0, 10) ?? '',
+      date:
+          map['entry_date'] as String? ??
+          map['created_at']?.toString().substring(0, 10) ??
+          '',
       memberName: displayName,
       avatarUrl: profile?['avatar_url'] as String?,
     );
@@ -121,4 +124,3 @@ class MealDeposit {
     );
   }
 }
-

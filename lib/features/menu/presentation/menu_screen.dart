@@ -7,6 +7,7 @@ import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/app_scaffold.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../auth/presentation/login_screen.dart';
+import '../../contacts/presentation/contacts_screen.dart';
 import 'members_screen.dart';
 
 /// Settings / profile screen — profile card, cottage info, navigation menu,
@@ -24,7 +25,7 @@ class _MenuScreenState extends State<MenuScreen> {
   final _dashService = DashboardService();
   final _memberService = MemberService();
   late Future<_MenuData> _future;
-  
+
   _MenuData? _currentData;
 
   void triggerAction(String action) {
@@ -37,8 +38,18 @@ class _MenuScreenState extends State<MenuScreen> {
           builder: (_) => MembersScreen(cottageId: data.profile.cottageId),
         ),
       );
-    } else if (action == 'settings' || action == 'contacts' || action == 'months' || action == 'feedback') {
-      showToast(context, '${action[0].toUpperCase()}${action.substring(1)} coming in a future update');
+    } else if (action == 'contacts') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ContactsScreen()),
+      );
+    } else if (action == 'settings' ||
+        action == 'months' ||
+        action == 'feedback') {
+      showToast(
+        context,
+        '${action[0].toUpperCase()}${action.substring(1)} coming in a future update',
+      );
     }
   }
 
@@ -52,7 +63,11 @@ class _MenuScreenState extends State<MenuScreen> {
     final profile = await _dashService.getCurrentProfile();
     final cottageName = await _memberService.getCottageName(profile.cottageId);
     final monthKey = await _dashService.getActiveMonthKey(profile.cottageId);
-    return _MenuData(profile: profile, cottageName: cottageName, monthKey: monthKey);
+    return _MenuData(
+      profile: profile,
+      cottageName: cottageName,
+      monthKey: monthKey,
+    );
   }
 
   Future<void> _logout() async {
@@ -82,9 +97,16 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, size: 40, color: CottageColors.destructive),
+                  const Icon(
+                    Icons.error_outline,
+                    size: 40,
+                    color: CottageColors.destructive,
+                  ),
                   const SizedBox(height: 12),
-                  Text('Failed to load.\n${snapshot.error}', textAlign: TextAlign.center),
+                  Text(
+                    'Failed to load.\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             );
@@ -104,8 +126,9 @@ class _MenuScreenState extends State<MenuScreen> {
                       CircleAvatar(
                         radius: 30,
                         backgroundColor: surface.accent,
-                        backgroundImage:
-                            data.profile.avatarUrl != null ? NetworkImage(data.profile.avatarUrl!) : null,
+                        backgroundImage: data.profile.avatarUrl != null
+                            ? NetworkImage(data.profile.avatarUrl!)
+                            : null,
                         child: data.profile.avatarUrl == null
                             ? Text(
                                 data.profile.firstName.isNotEmpty
@@ -136,13 +159,19 @@ class _MenuScreenState extends State<MenuScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 data.profile.email!,
-                                style: TextStyle(fontSize: 13, color: surface.mutedForeground),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: surface.mutedForeground,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: surface.accent,
                                 borderRadius: BorderRadius.circular(12),
@@ -178,19 +207,31 @@ class _MenuScreenState extends State<MenuScreen> {
                           color: surface.toneBlueBg,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(Icons.calendar_month_rounded, color: surface.toneBlueFg, size: 20),
+                        child: Icon(
+                          Icons.calendar_month_rounded,
+                          color: surface.toneBlueFg,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Active Month',
-                                style: TextStyle(fontSize: 13, color: surface.mutedForeground)),
+                            Text(
+                              'Active Month',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: surface.mutedForeground,
+                              ),
+                            ),
                             Text(
                               data.monthKey,
                               style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600, color: surface.foreground),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: surface.foreground,
+                              ),
                             ),
                           ],
                         ),
@@ -210,7 +251,8 @@ class _MenuScreenState extends State<MenuScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => MembersScreen(cottageId: data.profile.cottageId),
+                      builder: (_) =>
+                          MembersScreen(cottageId: data.profile.cottageId),
                     ),
                   );
                 },
@@ -228,7 +270,10 @@ class _MenuScreenState extends State<MenuScreen> {
                 label: 'Contacts',
                 surface: surface,
                 onTap: () {
-                  showToast(context, 'Contacts coming in a future update');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ContactsScreen()),
+                  );
                 },
               ),
               _MenuTile(
@@ -257,7 +302,11 @@ class _MenuScreenState extends State<MenuScreen> {
                             color: surface.toneRedBg,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(Icons.logout_rounded, color: surface.toneRedFg, size: 20),
+                          child: Icon(
+                            Icons.logout_rounded,
+                            color: surface.toneRedFg,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Text(
@@ -269,7 +318,11 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Icon(Icons.chevron_right, color: surface.mutedForeground, size: 20),
+                        Icon(
+                          Icons.chevron_right,
+                          color: surface.mutedForeground,
+                          size: 20,
+                        ),
                       ],
                     ),
                   ),
@@ -281,7 +334,10 @@ class _MenuScreenState extends State<MenuScreen> {
               Center(
                 child: Text(
                   'Cottage v1.0.0',
-                  style: TextStyle(fontSize: 12, color: surface.mutedForeground),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: surface.mutedForeground,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -297,7 +353,11 @@ class _MenuData {
   final Profile profile;
   final String cottageName;
   final String monthKey;
-  const _MenuData({required this.profile, required this.cottageName, required this.monthKey});
+  const _MenuData({
+    required this.profile,
+    required this.cottageName,
+    required this.monthKey,
+  });
 }
 
 class _MenuTile extends StatelessWidget {
@@ -306,7 +366,12 @@ class _MenuTile extends StatelessWidget {
   final CottageSurface surface;
   final VoidCallback onTap;
 
-  const _MenuTile({required this.icon, required this.label, required this.surface, required this.onTap});
+  const _MenuTile({
+    required this.icon,
+    required this.label,
+    required this.surface,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -322,15 +387,28 @@ class _MenuTile extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(color: surface.accent, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: surface.accent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(icon, color: surface.accentForeground, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(label,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: surface.foreground)),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: surface.foreground,
+                  ),
+                ),
               ),
-              Icon(Icons.chevron_right, color: surface.mutedForeground, size: 20),
+              Icon(
+                Icons.chevron_right,
+                color: surface.mutedForeground,
+                size: 20,
+              ),
             ],
           ),
         ),

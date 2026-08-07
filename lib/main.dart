@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/presentation/login_screen.dart';
+import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'package:cottage/helpers/onboarding_service.dart';
 import 'package:cottage/helpers/push_notification_service.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
@@ -14,6 +16,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
   await PushNotificationService.initialize();
+  await OnboardingService.load();
   runApp(const CottageApp());
 }
 
@@ -36,7 +39,14 @@ class CottageApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           home: !SupabaseService.isInitialized
               ? _SupabaseErrorScreen(error: SupabaseService.initializationError)
-              : const _AuthGate(),
+              : ValueListenableBuilder<bool>(
+                  valueListenable: OnboardingService.completed,
+                  builder: (context, seenOnboarding, _) {
+                    return seenOnboarding
+                        ? const _AuthGate()
+                        : const OnboardingScreen();
+                  },
+                ),
         );
       },
     );
@@ -53,12 +63,13 @@ class CottageApp extends StatelessWidget {
 /// from anywhere) all route through the same place.
 ///
 /// Rebuilding alone isn't enough, though: if the user was on the pushed
-/// Signup or Forgot Password screen when a session appears (e.g. Google
-/// sign-in finishing while SignupScreen is on top), that pushed route would
-/// keep covering the now-rebuilt BottomNavShell underneath it. So on every
-/// signed-in transition, this also pops back to the root route via
-/// [NavigationService.popToRoot], the same way a successful password
-/// sign-in/signup used to navigate manually.
+/// Forgot Password screen when a session appears (e.g. Google sign-in
+/// finishing while it's on top -- Login/Signup itself is a single
+/// never-pushed screen that toggles mode in place, so it can't be "on top"
+/// this way), that pushed route would keep covering the now-rebuilt
+/// BottomNavShell underneath it. So on every signed-in transition, this
+/// also pops back to the root route via [NavigationService.popToRoot], the
+/// same way a successful password sign-in/signup used to navigate manually.
 class _AuthGate extends StatefulWidget {
   const _AuthGate();
 
@@ -72,7 +83,9 @@ class _AuthGateState extends State<_AuthGate> {
   @override
   void initState() {
     super.initState();
-    _subscription = SupabaseService.client.auth.onAuthStateChange.listen((state) {
+    _subscription = SupabaseService.client.auth.onAuthStateChange.listen((
+      state,
+    ) {
       if (state.session != null) {
         NavigationService.popToRoot();
         PushNotificationService.registerToken();
@@ -92,9 +105,13 @@ class _AuthGateState extends State<_AuthGate> {
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: SupabaseService.client.auth.onAuthStateChange,
-      initialData: AuthState(AuthChangeEvent.initialSession, SupabaseService.currentSession),
+      initialData: AuthState(
+        AuthChangeEvent.initialSession,
+        SupabaseService.currentSession,
+      ),
       builder: (context, snapshot) {
-        final session = snapshot.data?.session ?? SupabaseService.currentSession;
+        final session =
+            snapshot.data?.session ?? SupabaseService.currentSession;
         return session != null ? const BottomNavShell() : const LoginScreen();
       },
     );
@@ -151,7 +168,11 @@ class _SupabaseErrorScreen extends StatelessWidget {
                     ),
                     child: const SelectableText(
                       'flutter run --dart-define-from-file=env.json',
-                      style: TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],

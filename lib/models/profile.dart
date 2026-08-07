@@ -15,6 +15,11 @@ class Profile {
   /// visibility/management checks (see src/lib/notice-types.tsx).
   final String role;
 
+  /// Mirrors profiles.is_active -- defaults true since most queries don't
+  /// select this column (they already filter to active-only server-side),
+  /// so a missing value should never be misread as inactive.
+  final bool isActive;
+
   const Profile({
     required this.id,
     required this.cottageId,
@@ -25,6 +30,7 @@ class Profile {
     this.mobileNumber,
     this.address,
     this.role = 'member',
+    this.isActive = true,
   });
 
   bool get isSuperAdmin => role == 'super_admin';
@@ -40,11 +46,15 @@ class Profile {
       mobileNumber: map['mobile_number'] as String?,
       address: map['address'] as String?,
       role: map['role'] as String? ?? 'member',
+      isActive: map['is_active'] as bool? ?? true,
     );
   }
 
   /// Same fallback order as the web app's getDisplayName (src/lib/data/display-name.ts).
-  String get displayName => (lastName?.isNotEmpty ?? false) ? lastName! : (firstName.isNotEmpty ? firstName : 'Member');
+  String get displayName => (lastName?.isNotEmpty ?? false)
+      ? lastName!
+      : (firstName.isNotEmpty ? firstName : 'Member');
 
-  String get fullName => [firstName, lastName].where((s) => s != null && s.isNotEmpty).join(' ');
+  String get fullName =>
+      [firstName, lastName].where((s) => s != null && s.isNotEmpty).join(' ');
 }

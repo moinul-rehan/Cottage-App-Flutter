@@ -32,9 +32,14 @@ class _PinnedNoticesSectionState extends State<PinnedNoticesSection> {
   Future<List<Notice>> _load() async {
     final notices = await _service.getNotices(widget.profile.cottageId);
     final visible = notices.where(
-      (n) => n.visibleTo(profileId: widget.profile.id, isSuperAdmin: widget.profile.isSuperAdmin),
+      (n) => n.visibleTo(
+        profileId: widget.profile.id,
+        isSuperAdmin: widget.profile.isSuperAdmin,
+      ),
     );
-    final pinned = visible.where((n) => n.status == NoticeStatus.published && n.effectivelyPinned).toList();
+    final pinned = visible
+        .where((n) => n.status == NoticeStatus.published && n.effectivelyPinned)
+        .toList();
     return sortNoticesForDisplay(pinned);
   }
 
@@ -54,16 +59,34 @@ class _PinnedNoticesSectionState extends State<PinnedNoticesSection> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.push_pin_rounded, size: 15, color: surface.mutedForeground),
+                  Icon(
+                    Icons.push_pin_rounded,
+                    size: 15,
+                    color: surface.mutedForeground,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Pinned Notices',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: surface.mutedForeground, letterSpacing: 0.5),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: surface.mutedForeground,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NoticesScreen())),
-                    child: Text('See all', style: TextStyle(fontSize: 12, color: CottageColors.primary, fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NoticesScreen()),
+                    ),
+                    child: Text(
+                      'See all',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: CottageColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -74,7 +97,8 @@ class _PinnedNoticesSectionState extends State<PinnedNoticesSection> {
                   scrollDirection: Axis.horizontal,
                   itemCount: notices.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
-                  itemBuilder: (context, index) => _PinnedNoticeChip(notice: notices[index]),
+                  itemBuilder: (context, index) =>
+                      _PinnedNoticeChip(notice: notices[index]),
                 ),
               ),
             ],
@@ -96,14 +120,18 @@ class _PinnedNoticeChip extends StatelessWidget {
     final priorityMeta = kPriorityMeta[notice.priority]!;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NoticesScreen())),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const NoticesScreen())),
       child: Container(
         width: 220,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: meta.chipBg.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: priorityMeta.pinColor.withValues(alpha: 0.4)),
+          border: Border.all(
+            color: priorityMeta.pinColor.withValues(alpha: 0.4),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +141,14 @@ class _PinnedNoticeChip extends StatelessWidget {
               children: [
                 Icon(meta.icon, size: 14, color: meta.chipFg),
                 const SizedBox(width: 5),
-                Text(meta.label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: meta.chipFg)),
+                Text(
+                  meta.label,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: meta.chipFg,
+                  ),
+                ),
                 const Spacer(),
                 Icon(Icons.push_pin, size: 12, color: priorityMeta.pinColor),
               ],
@@ -123,7 +158,11 @@ class _PinnedNoticeChip extends StatelessWidget {
               notice.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: surface.foreground),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: surface.foreground,
+              ),
             ),
           ],
         ),

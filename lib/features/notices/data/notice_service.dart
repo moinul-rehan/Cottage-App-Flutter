@@ -22,7 +22,9 @@ class NoticeService {
         .eq('cottage_id', cottageId)
         .order('created_at', ascending: false);
 
-    return (rows as List).map((r) => Notice.fromMap(r as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((r) => Notice.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   /// Create a new notice. A pared-down port of createNotice in
@@ -49,7 +51,8 @@ class NoticeService {
     String? mealDinner,
   }) async {
     final resolvedPublishAt = publishAt ?? DateTime.now();
-    final resolvedExpiresAt = expiresAt ?? resolvedPublishAt.add(const Duration(days: 7));
+    final resolvedExpiresAt =
+        expiresAt ?? resolvedPublishAt.add(const Duration(days: 7));
 
     await _client.from('notices').insert({
       'cottage_id': cottageId,
@@ -93,29 +96,40 @@ class NoticeService {
   /// Archives a notice (soft delete) -- mirrors the archive action in
   /// NoticeCardActions.tsx.
   Future<void> archiveNotice(String noticeId) async {
-    await _client.from('notices').update({'archived_at': DateTime.now().toIso8601String()}).eq('id', noticeId);
+    await _client
+        .from('notices')
+        .update({'archived_at': DateTime.now().toIso8601String()})
+        .eq('id', noticeId);
   }
 
   Future<void> togglePin(String noticeId, bool pinned) async {
-    await _client.from('notices').update({
-      'is_pinned': pinned,
-      'pin_duration': pinned ? 'until_manual' : 'none',
-    }).eq('id', noticeId);
+    await _client
+        .from('notices')
+        .update({
+          'is_pinned': pinned,
+          'pin_duration': pinned ? 'until_manual' : 'none',
+        })
+        .eq('id', noticeId);
   }
 
   /// Marks the dashboard popup for this notice as seen by the current
   /// member -- mirrors dismissNotice in notice-board/actions.ts.
   Future<void> dismissNotice(String noticeId, String userId) async {
-    await _client.from('notice_dismissals').upsert(
-      {'notice_id': noticeId, 'user_id': userId},
-      onConflict: 'notice_id,user_id',
-    );
+    await _client.from('notice_dismissals').upsert({
+      'notice_id': noticeId,
+      'user_id': userId,
+    }, onConflict: 'notice_id,user_id');
   }
 
   /// Ids of notices already dismissed by this member -- used to filter the
   /// dashboard popup queue.
   Future<Set<String>> getDismissedNoticeIds(String userId) async {
-    final rows = await _client.from('notice_dismissals').select('notice_id').eq('user_id', userId);
-    return (rows as List).map((r) => (r as Map<String, dynamic>)['notice_id'] as String).toSet();
+    final rows = await _client
+        .from('notice_dismissals')
+        .select('notice_id')
+        .eq('user_id', userId);
+    return (rows as List)
+        .map((r) => (r as Map<String, dynamic>)['notice_id'] as String)
+        .toSet();
   }
 }

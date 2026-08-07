@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- Required on Android 13+ (API 33) for any notification to be shown at
+         all: without this, FirebaseMessaging.requestPermission() in
+         PushNotificationService has nothing to grant and the system tray
+         silently drops every notification, even a fully-configured one. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Cottage"
         android:name="${applicationName}"
@@ -44,6 +49,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Background/terminated-app pushes are drawn natively by the FCM
+             SDK itself (PushNotificationService's onBackgroundMessage
+             handler only re-inits Firebase, it doesn't build the
+             notification): these two meta-data entries tell it which
+             channel and icon to use when the payload doesn't specify one,
+             matching PushNotificationService's `cottage_default` channel. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="cottage_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

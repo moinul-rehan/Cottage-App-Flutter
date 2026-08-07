@@ -2,222 +2,105 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cottage/constants/theme.dart';
 
-/// Shared building blocks for the auth screens (Login/Signup/ForgotPassword)
-/// so all three stay pixel-consistent with the web app's mobile auth layout
-/// (src/app/login, src/app/signup, src/app/forgot-password).
+/// Vertical cross-slide used to swap the Login/Signup form content in place
+/// (see [LoginScreen]): the outgoing form slides up and fades out while the
+/// incoming form slides up from below the fold and fades in, simultaneously
+/// -- unlike a route push, the surrounding hero panel never rebuilds, so it
+/// reads as "fixed" while only the form swaps underneath it.
 ///
-/// Uses the same `public/logo.png` asset as the web's `<Logo size={32} />`
-/// (copied to `assets/images/logo.png`, registered in pubspec.yaml), with the
-/// same `rounded-[22%]` corner treatment.
-class AuthWordmark extends StatelessWidget {
-  const AuthWordmark({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(32 * 0.22),
-          child: Image.asset('assets/images/logo.png', width: 32, height: 32),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Cottage',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.3,
-            color: context.surface.foreground,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Mirrors the web's `<Input className="h-12 rounded-2xl px-4 text-base" />`
-/// styling: 48px tall, 24px-radius rounded corners, muted/40%-opacity fill.
-/// Per the Figma "Cottage" auth screens (node 1:3661/1:3438): [required]
-/// renders a red asterisk after the label, [leadingIcon] shows a small
-/// outline icon inside the field, and a password field (obscureText: true)
-/// automatically gets a tap-to-reveal trailing eye icon -- no separate prop
-/// needed, callers just pass obscureText as before.
-class AuthTextField extends StatefulWidget {
-  const AuthTextField({
+/// [child] must carry a [Key] that changes whenever the content changes
+/// (e.g. `ValueKey(mode)`) so the switch can be detected.
+class AuthFormSwitcher extends StatefulWidget {
+  const AuthFormSwitcher({
     super.key,
-    required this.label,
-    required this.controller,
-    this.obscureText = false,
-    this.required = false,
-    this.leadingIcon,
-    this.keyboardType,
-    this.autofillHints,
-    this.validator,
-    this.textInputAction,
+    required this.child,
+    this.duration = const Duration(milliseconds: 620),
   });
 
-  final String label;
-  final TextEditingController controller;
-  final bool obscureText;
-  final bool required;
-  final IconData? leadingIcon;
-  final TextInputType? keyboardType;
-  final List<String>? autofillHints;
-  final String? Function(String?)? validator;
-  final TextInputAction? textInputAction;
+  final Widget child;
+  final Duration duration;
 
   @override
-  State<AuthTextField> createState() => _AuthTextFieldState();
+  State<AuthFormSwitcher> createState() => _AuthFormSwitcherState();
 }
 
-class _AuthTextFieldState extends State<AuthTextField> {
-  late bool _obscured = widget.obscureText;
+class _AuthFormSwitcherState extends State<AuthFormSwitcher>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  Widget? _oldChild;
+  late Widget _newChild;
 
   @override
-  Widget build(BuildContext context) {
-    final surface = context.surface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.label,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: surface.foreground),
-            ),
-            if (widget.required) ...[
-              const SizedBox(width: 3),
-              const Text('*', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: CottageColors.destructive)),
-            ],
-          ],
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: widget.controller,
-          obscureText: _obscured,
-          keyboardType: widget.keyboardType,
-          autofillHints: widget.autofillHints,
-          validator: widget.validator,
-          textInputAction: widget.textInputAction,
-          style: TextStyle(fontSize: 16, color: surface.foreground),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: surface.muted.withValues(alpha: 0.4),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            prefixIcon: widget.leadingIcon != null
-                ? Icon(widget.leadingIcon, size: 20, color: surface.mutedForeground)
-                : null,
-            suffixIcon: widget.obscureText
-                ? IconButton(
-                    icon: Icon(
-                      _obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      size: 20,
-                      color: surface.mutedForeground,
-                    ),
-                    onPressed: () => setState(() => _obscured = !_obscured),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide(color: surface.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide(color: surface.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: const BorderSide(color: CottageColors.primary, width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: const BorderSide(color: CottageColors.destructive),
-            ),
-          ),
-        ),
-      ],
+  void initState() {
+    super.initState();
+    _newChild = widget.child;
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+      value: 1,
     );
   }
-}
-
-/// Rounded pill error banner: `bg-destructive/10 text-destructive`.
-class AuthErrorBanner extends StatelessWidget {
-  const AuthErrorBanner({super.key, required this.message});
-
-  final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: CottageColors.destructive.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(message, style: const TextStyle(color: CottageColors.destructive, fontSize: 14)),
-    );
+  void didUpdateWidget(covariant AuthFormSwitcher oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.child.key != oldWidget.child.key) {
+      _oldChild = oldWidget.child;
+      _newChild = widget.child;
+      _controller
+        ..value = 0
+        ..forward().whenComplete(() {
+          if (mounted) setState(() => _oldChild = null);
+        });
+    }
   }
-}
-
-/// Rounded success banner used by Forgot Password -- web hardcodes emerald
-/// here rather than a theme token (`bg-emerald-50 text-emerald-700`).
-class AuthSuccessBanner extends StatelessWidget {
-  const AuthSuccessBanner({super.key, required this.message});
-
-  final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(color: Color(0xFF047857), fontSize: 14),
-      ),
-    );
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
-}
-
-/// A horizontal rule with a centered "Or" label cutting through it, matching
-/// the web's absolutely-positioned divider + centered uppercase label combo.
-class AuthOrDivider extends StatelessWidget {
-  const AuthOrDivider({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final surface = context.surface;
-    return SizedBox(
-      height: 20,
+    final curved = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutCubic,
+    );
+    // Clipped so a form sliding up and out never overflows above this
+    // switcher's own bounds -- i.e. it disappears at the boundary with the
+    // hero panel above, never visibly crossing onto the brand-color area.
+    return ClipRect(
       child: Stack(
-        alignment: Alignment.center,
+        alignment: Alignment.topCenter,
         children: [
-          Divider(color: surface.border, thickness: 1, height: 1),
-          Container(
-            color: surface.background,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              'OR',
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 0.5,
-                color: surface.mutedForeground,
+          if (_oldChild != null)
+            SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset.zero,
+                end: const Offset(0, -1),
+              ).animate(curved),
+              child: FadeTransition(
+                opacity: Tween<double>(begin: 1, end: 0).animate(curved),
+                child: _oldChild,
               ),
             ),
+          SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: _newChild),
           ),
         ],
       ),
     );
   }
 }
+
+/// Shared building blocks for the auth screens (Login/Signup/ForgotPassword)
+/// so all three stay pixel-consistent with the web app's mobile auth layout
+/// (src/app/login, src/app/signup, src/app/forgot-password).
 
 /// Standard 4-color Google "G" glyph, painted to match src/components/google-icon.tsx.
 class GoogleGlyph extends StatelessWidget {
@@ -322,40 +205,38 @@ class AuthInlineBrand extends StatelessWidget {
         const SizedBox(width: 5),
         const Text(
           'Cottage',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CottageColors.primary),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: CottageColors.primary,
+          ),
         ),
       ],
     );
   }
 }
 
-/// The orange brand panel from the Figma "Cottage" auth screens (node
-/// 1:3661 Login / 1:3438 Register) -- on desktop it's a full-height curved
-/// side panel; here it's collapsed into a rounded-bottom hero banner at the
-/// top of the screen (mobile has no room for a side-by-side split), keeping
-/// the same content: white logo mark, "Welcome to Cottage!" headline, a
-/// context line, and an outlined pill button that jumps to the other auth
-/// screen (Login <-> Register). The decorative house/magnifying-glass
-/// illustration behind the text in Figma is a low-value decorative asset
-/// for this panel's now-much-smaller size, so it's dropped rather than
-/// sourced as an image.
-class AuthHeroPanel extends StatelessWidget {
-  const AuthHeroPanel({
-    super.key,
-    required this.contextLine,
-    required this.ctaLabel,
-    required this.onCtaPressed,
-  });
+/// The single reference for every auth screen's top "brand color greetings"
+/// section -- logo size, container padding, title style, and the
+/// logo-to-title/title-to-body gaps all come from Figma node 41:820
+/// ("Login - Mobile") and must stay identical across every mode of
+/// [LoginScreen] (Login/Signup/Forgot Password): only the [title] text and
+/// the [body] below it (context line + CTA, or just a subtitle) vary.
+///
+/// Both cross-fade in place when they change -- keyed by their own value,
+/// so [title] only animates when the text actually differs (e.g. switching
+/// into/out of Forgot Password), not on every mode change.
+class AuthHero extends StatelessWidget {
+  const AuthHero({super.key, required this.title, required this.body});
 
-  final String contextLine;
-  final String ctaLabel;
-  final VoidCallback onCtaPressed;
+  final String title;
+  final Widget body;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: const BoxDecoration(
         color: CottageColors.primary,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(48)),
@@ -363,79 +244,229 @@ class AuthHeroPanel extends StatelessWidget {
       child: Column(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(64 * 0.22),
+            borderRadius: BorderRadius.circular(40 * 0.22),
             child: Container(
-              width: 64,
-              height: 64,
+              width: 40,
+              height: 40,
               color: Colors.white,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(3),
               child: Image.asset('assets/images/logo.png'),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            'Welcome to Cottage!',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.archivo(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              color: Colors.white,
+          const SizedBox(height: 12),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: Text(
+              title,
+              key: ValueKey(title),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.archivo(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+                color: Colors.white,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            contextLine,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85)),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: onCtaPressed,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white),
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(ctaLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
-          ),
+          const SizedBox(height: 6),
+          body,
         ],
       ),
     );
   }
 }
 
-/// Outline "Continue with Google" button -- background = page background
-/// (NOT primary-filled), bordered, pill-shaped, 48px tall.
-class GoogleSignInButton extends StatelessWidget {
-  const GoogleSignInButton({super.key, required this.onPressed, this.enabled = true});
+/// Body text style shared by every [AuthHero] subtitle/context line
+/// (fontSize 14, white @ 85% opacity) -- so Forgot Password's plain
+/// subtitle and Login/Signup's context line render identically.
+TextStyle authHeroBodyTextStyle() =>
+    TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85));
+
+/// Slightly darker orange used by the "Login"/"Register" titles and their
+/// primary buttons per Figma nodes 41:820 ("Login - Mobile") and 43:841
+/// ("Register - Mobile") -- distinct from [CottageColors.primary] used on
+/// the hero panel above them.
+const kAuthTitleColor = Color(0xFFD1593B);
+
+/// Auth field styling for the "Login/Register - Mobile" Figma spec: flat
+/// #FAFAFA fill, thin #EEE border, 10px radius, no leading icon --
+/// visually simpler than [AuthTextField], which those two screens no
+/// longer use.
+class MobileAuthField extends StatefulWidget {
+  const MobileAuthField({
+    super.key,
+    required this.label,
+    required this.hint,
+    required this.controller,
+    this.required = true,
+    this.obscureText = false,
+    this.keyboardType,
+    this.autofillHints,
+    this.validator,
+    this.textInputAction,
+  });
+
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final bool required;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final List<String>? autofillHints;
+  final String? Function(String?)? validator;
+  final TextInputAction? textInputAction;
+
+  @override
+  State<MobileAuthField> createState() => _MobileAuthFieldState();
+}
+
+class _MobileAuthFieldState extends State<MobileAuthField> {
+  late bool _obscured = widget.obscureText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.label,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+            ),
+            if (widget.required) ...[
+              const SizedBox(width: 2),
+              const Text(
+                '*',
+                style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: widget.controller,
+          obscureText: _obscured,
+          keyboardType: widget.keyboardType,
+          autofillHints: widget.autofillHints,
+          validator: widget.validator,
+          textInputAction: widget.textInputAction,
+          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            hintText: widget.hint,
+            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            suffixIcon: widget.obscureText
+                ? IconButton(
+                    icon: Icon(
+                      _obscured
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 18,
+                      color: const Color(0xFFAAAAAA),
+                    ),
+                    onPressed: () => setState(() => _obscured = !_obscured),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: kAuthTitleColor, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: CottageColors.destructive),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Thin-line "Or" divider per the "Login/Register - Mobile" spec -- a plain
+/// hairline either side of a small grey "Or" label (vs. [AuthOrDivider]'s
+/// bolder "OR" chip used elsewhere).
+class MobileOrDivider extends StatelessWidget {
+  const MobileOrDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(
+          child: Divider(color: Color(0xFFEEEEEE), height: 1, thickness: 1),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            'Or',
+            style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+          ),
+        ),
+        Expanded(
+          child: Divider(color: Color(0xFFEEEEEE), height: 1, thickness: 1),
+        ),
+      ],
+    );
+  }
+}
+
+/// Filled grey "Continue with Google" pill per the "Login/Register -
+/// Mobile" spec -- solid #EEE fill (vs. [GoogleSignInButton]'s outlined
+/// style).
+class MobileGoogleButton extends StatelessWidget {
+  const MobileGoogleButton({
+    super.key,
+    required this.onPressed,
+    required this.enabled,
+  });
 
   final VoidCallback onPressed;
   final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final surface = context.surface;
     return SizedBox(
       height: 48,
       width: double.infinity,
-      child: OutlinedButton(
+      child: ElevatedButton(
         onPressed: enabled ? onPressed : null,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: surface.background,
-          side: BorderSide(color: surface.border),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFEEEEEE),
+          disabledBackgroundColor: const Color(0xFFEEEEEE),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const GoogleGlyph(size: 20),
-            const SizedBox(width: 10),
+            const GoogleGlyph(size: 24),
+            const SizedBox(width: 8),
             Text(
               'Continue with Google',
-              style: TextStyle(fontSize: 16, color: surface.foreground, fontWeight: FontWeight.w500),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF242424),
+              ),
             ),
           ],
         ),

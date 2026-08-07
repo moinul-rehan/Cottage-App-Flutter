@@ -9,7 +9,6 @@ import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
-import 'package:cottage/features/notifications/presentation/notification_bell.dart';
 import 'notice_sticky_note.dart';
 
 /// Full notice-board screen -- mirrors src/app/(house)/notice-board/page.tsx:
@@ -18,9 +17,11 @@ import 'notice_sticky_note.dart';
 ///
 /// Presentation follows the Figma "Notice Board" spec (orange band + white
 /// rounded sheet, pill tab switcher, sticky-note cards), page-shelled the
-/// same way as the Meal tab's "Monthly Details" header (orange band with
-/// title, white content sheet below) instead of the default [AppScaffold]
-/// bar, since this tab -- like Dashboard and Meal -- owns its header.
+/// same way as the Meal tab's "Monthly Details" screen: a collapsing
+/// [SliverPersistentHeader] (title fades/shrinks into the white sheet as
+/// you scroll, with the "Create Notice" button and tab switcher pinned at
+/// its bottom) around a [TabBarView] of independently-scrollable lists,
+/// instead of a static fixed header + single ListView.
 class NoticesScreen extends StatefulWidget {
   const NoticesScreen({super.key});
 
@@ -38,29 +39,65 @@ class _NoticesData {
   final Profile profile;
   final List<Notice> notices;
   final Map<String, _Member> membersById;
-  const _NoticesData({required this.profile, required this.notices, required this.membersById});
+  const _NoticesData({
+    required this.profile,
+    required this.notices,
+    required this.membersById,
+  });
 }
 
-class _NoticesScreenState extends State<NoticesScreen> {
+class _NoticesScreenState extends State<NoticesScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _noticeService = NoticeService();
   final _dashService = DashboardService();
   late Future<_NoticesData> _future;
-  String _tab = 'feed';
+  late TabController _tabController;
+  int _activeTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _activeTabIndex = _tabController.index);
+      }
+    });
     _future = _load();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A request in flight when the OS suspends the app (e.g. phone sleeps
+    // overnight) has its socket killed without ever completing or erroring
+    // -- the awaiting Future just hangs forever, leaving the screen stuck
+    // on its loading spinner. Reloading on resume recovers from that;
+    // combined with _load()'s timeout below, the screen can't get stuck
+    // for longer than one foreground/background cycle.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
   Future<_NoticesData> _load() async {
-    final profile = await _dashService.getCurrentProfile();
-    final notices = await _noticeService.getNotices(profile.cottageId);
+    final profile = await _dashService.getCurrentProfile().timeout(
+      const Duration(seconds: 15),
+    );
+    final notices = await _noticeService
+        .getNotices(profile.cottageId)
+        .timeout(const Duration(seconds: 15));
     final memberRows = await SupabaseService.client
         .from('profiles')
         .select('id, first_name, last_name')
         .eq('cottage_id', profile.cottageId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .timeout(const Duration(seconds: 15));
     final membersById = <String, _Member>{
       for (final r in memberRows as List)
         (r as Map<String, dynamic>)['id'] as String: _Member(
@@ -68,18 +105,27 @@ class _NoticesScreenState extends State<NoticesScreen> {
           ((r['last_name'] as String?)?.isNotEmpty ?? false)
               ? r['last_name'] as String
               : ((r['first_name'] as String?)?.isNotEmpty ?? false)
-                  ? r['first_name'] as String
-                  : 'Member',
+              ? r['first_name'] as String
+              : 'Member',
         ),
     };
-    return _NoticesData(profile: profile, notices: notices, membersById: membersById);
+    return _NoticesData(
+      profile: profile,
+      notices: notices,
+      membersById: membersById,
+    );
   }
 
   void _refresh() => setState(() => _future = _load());
 
   List<Notice> _visibleTo(List<Notice> notices, Profile profile) {
     return notices
-        .where((n) => n.visibleTo(profileId: profile.id, isSuperAdmin: profile.isSuperAdmin))
+        .where(
+          (n) => n.visibleTo(
+            profileId: profile.id,
+            isSuperAdmin: profile.isSuperAdmin,
+          ),
+        )
         .toList();
   }
 
@@ -114,7 +160,10 @@ class _NoticesScreenState extends State<NoticesScreen> {
               decoration: const InputDecoration(labelText: 'Type'),
               items: [
                 for (final t in NoticeType.values)
-                  DropdownMenuItem(value: t, child: Text(kNoticeTypeMeta[t]!.label)),
+                  DropdownMenuItem(
+                    value: t,
+                    child: Text(kNoticeTypeMeta[t]!.label),
+                  ),
               ],
               onChanged: (v) => setSheetState(() => type = v ?? type),
             ),
@@ -124,7 +173,10 @@ class _NoticesScreenState extends State<NoticesScreen> {
               decoration: const InputDecoration(labelText: 'Priority'),
               items: [
                 for (final p in NoticePriority.values)
-                  DropdownMenuItem(value: p, child: Text(kPriorityMeta[p]!.label)),
+                  DropdownMenuItem(
+                    value: p,
+                    child: Text(kPriorityMeta[p]!.label),
+                  ),
               ],
               onChanged: (v) => setSheetState(() => priority = v ?? priority),
             ),
@@ -133,10 +185,14 @@ class _NoticesScreenState extends State<NoticesScreen> {
               initialValue: visibility,
               decoration: const InputDecoration(labelText: 'Visible to'),
               items: [
-                for (final v in [NoticeVisibility.everyone, NoticeVisibility.admins])
+                for (final v in [
+                  NoticeVisibility.everyone,
+                  NoticeVisibility.admins,
+                ])
                   DropdownMenuItem(value: v, child: Text(kVisibilityLabel[v]!)),
               ],
-              onChanged: (v) => setSheetState(() => visibility = v ?? visibility),
+              onChanged: (v) =>
+                  setSheetState(() => visibility = v ?? visibility),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -162,192 +218,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final surface = context.surface;
-    return Scaffold(
-      backgroundColor: CottageColors.primary,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(context.responsivePadding, 8, context.responsivePadding, 16),
-              child: Row(
-                children: [
-                  const Text(
-                    'Notice Board',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white),
-                  ),
-                  const Spacer(),
-                  Theme(
-                    data: Theme.of(context).copyWith(iconTheme: const IconThemeData(color: Colors.white)),
-                    child: const NotificationBell(bareIcon: true),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: surface.card,
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                ),
-                child: FutureBuilder<_NoticesData>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.error_outline, size: 40, color: CottageColors.destructive),
-                            const SizedBox(height: 12),
-                            Text('Could not load notices.\n${snapshot.error}', textAlign: TextAlign.center),
-                            const SizedBox(height: 16),
-                            ElevatedButton(onPressed: _refresh, child: const Text('Retry')),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final data = snapshot.data!;
-                    final visible = _visibleTo(data.notices, data.profile);
-                    final feed = sortNoticesForDisplay(visible.where((n) => n.status == NoticeStatus.published).toList());
-                    final scheduled = sortNoticesForDisplay(visible.where((n) => n.status == NoticeStatus.scheduled).toList());
-                    final history = sortNoticesForDisplay(visible);
-
-                    final pinned = feed.where((n) => n.effectivelyPinned).toList();
-                    final unpinned = feed.where((n) => !n.effectivelyPinned).toList();
-
-                    return RefreshIndicator(
-                      onRefresh: () async => _refresh(),
-                      child: ListView(
-                        padding: EdgeInsets.fromLTRB(context.responsivePadding, 20, context.responsivePadding, 96),
-                        children: [
-                          const Text(
-                            "The house's communication hub - independent of Meal, Utilities and Cottage Balance.",
-                            style: TextStyle(fontSize: 14, color: Color(0xFF303030)),
-                          ),
-                          const SizedBox(height: 16),
-                          _CreateNoticeButton(onTap: () => _showAddNotice(data.profile)),
-                          const SizedBox(height: 16),
-                          _NoticeTabSwitcher(tab: _tab, onChanged: (t) => setState(() => _tab = t)),
-                          const SizedBox(height: 16),
-                          ..._buildTabBody(data, feed, pinned, unpinned, scheduled, history),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildTabBody(
-    _NoticesData data,
-    List<Notice> feed,
-    List<Notice> pinned,
-    List<Notice> unpinned,
-    List<Notice> scheduled,
-    List<Notice> history,
-  ) {
-    Widget noticeCard(Notice n, {bool showStatus = false}) {
-      final creatorName = n.isAnonymous ? 'Cottage' : (data.membersById[n.createdBy]?.name ?? 'Member');
-      final canManage = data.profile.isSuperAdmin || n.createdBy == data.profile.id;
-      final service = NoticeService();
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: NoticeStickyNoteCard(
-          notice: n,
-          creatorName: creatorName,
-          canManage: canManage,
-          showStatusBadge: showStatus,
-          onManage: (v) async {
-            if (v == 'pin') await service.togglePin(n.id, !n.isPinned);
-            if (v == 'archive') await service.archiveNotice(n.id);
-            _refresh();
-          },
-        ),
-      );
-    }
-
-    if (_tab == 'feed') {
-      if (feed.isEmpty) {
-        return const [EmptyState(icon: Icons.push_pin_rounded, title: 'No active notices right now.')];
-      }
-      return [
-        if (pinned.isNotEmpty) ...[
-          _SectionLabel('Pinned'),
-          const SizedBox(height: 8),
-          for (final n in pinned) noticeCard(n),
-        ],
-        if (unpinned.isNotEmpty) ...[
-          _SectionLabel('Recent'),
-          const SizedBox(height: 8),
-          for (final n in unpinned) noticeCard(n),
-        ],
-      ];
-    }
-    if (_tab == 'scheduled') {
-      if (scheduled.isEmpty) {
-        return const [EmptyState(icon: Icons.schedule_rounded, title: 'Nothing scheduled.')];
-      }
-      return [for (final n in scheduled) noticeCard(n)];
-    }
-    // history
-    if (history.isEmpty) {
-      return const [EmptyState(icon: Icons.history_rounded, title: 'No notices yet.')];
-    }
-    return [for (final n in history) noticeCard(n, showStatus: true)];
-  }
-}
-
-class _CreateNoticeButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _CreateNoticeButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-          borderRadius: BorderRadius.circular(1000),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 1, offset: const Offset(0, 1))],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add, size: 20, color: Color(0xFF404040)),
-            const SizedBox(width: 8),
-            const Text('Create Notice', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF404040))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NoticeTabSwitcher extends StatelessWidget {
-  final String tab;
-  final ValueChanged<String> onChanged;
-  const _NoticeTabSwitcher({required this.tab, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTabSwitcher(CottageSurface surface) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -357,31 +228,27 @@ class _NoticeTabSwitcher extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _NoticeTab(label: 'Notice Feed', selected: tab == 'feed', onTap: () => onChanged('feed'))),
+          Expanded(child: _buildTabItem(0, 'Notice Feed')),
           const SizedBox(width: 4),
-          Expanded(child: _NoticeTab(label: 'Scheduled Notices', selected: tab == 'scheduled', onTap: () => onChanged('scheduled'))),
+          Expanded(child: _buildTabItem(1, 'Scheduled Notices')),
           const SizedBox(width: 4),
-          Expanded(child: _NoticeTab(label: 'Notice History', selected: tab == 'history', onTap: () => onChanged('history'))),
+          Expanded(child: _buildTabItem(2, 'Notice History')),
         ],
       ),
     );
   }
-}
 
-class _NoticeTab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _NoticeTab({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTabItem(int index, String label) {
+    final active = _activeTabIndex == index;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => setState(() {
+        _activeTabIndex = index;
+        _tabController.animateTo(index);
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
+          color: active ? CottageColors.primary : const Color(0xFFFAFAFA),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -390,10 +257,183 @@ class _NoticeTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : const Color(0xFF404040),
+            color: active ? Colors.white : const Color(0xFF404040),
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = context.surface;
+    return FutureBuilder<_NoticesData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                margin: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: surface.card,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Could not load notices.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: surface.foreground),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final data = snapshot.data!;
+        final visible = _visibleTo(data.notices, data.profile);
+        final feed = sortNoticesForDisplay(
+          visible.where((n) => n.status == NoticeStatus.published).toList(),
+        );
+        final scheduled = sortNoticesForDisplay(
+          visible.where((n) => n.status == NoticeStatus.scheduled).toList(),
+        );
+        final history = sortNoticesForDisplay(visible);
+        final pinned = feed.where((n) => n.effectivelyPinned).toList();
+        final unpinned = feed.where((n) => !n.effectivelyPinned).toList();
+
+        Widget noticeCard(Notice n, {bool showStatus = false}) {
+          final creatorName = n.isAnonymous
+              ? 'Cottage'
+              : (data.membersById[n.createdBy]?.name ?? 'Member');
+          final canManage =
+              data.profile.isSuperAdmin || n.createdBy == data.profile.id;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: NoticeStickyNoteCard(
+              notice: n,
+              creatorName: creatorName,
+              canManage: canManage,
+              showStatusBadge: showStatus,
+              onManage: (v) async {
+                if (v == 'pin')
+                  await _noticeService.togglePin(n.id, !n.isPinned);
+                if (v == 'archive') await _noticeService.archiveNotice(n.id);
+                _refresh();
+              },
+            ),
+          );
+        }
+
+        Widget tabList(List<Widget> children) {
+          return RefreshIndicator(
+            onRefresh: () async => _refresh(),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                context.responsivePadding,
+                20,
+                context.responsivePadding,
+                96,
+              ),
+              children: children,
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: CottageColors.primary,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicNoticeHeaderDelegate(
+                    surface: surface,
+                    tabSwitcher: _buildTabSwitcher(surface),
+                    onCreateNotice: () => _showAddNotice(data.profile),
+                    safeAreaTop: MediaQuery.of(context).padding.top,
+                  ),
+                ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  tabList(
+                    feed.isEmpty
+                        ? const [
+                            EmptyState(
+                              icon: Icons.push_pin_rounded,
+                              title: 'No active notices right now.',
+                            ),
+                          ]
+                        : [
+                            if (pinned.isNotEmpty) ...[
+                              const _SectionLabel('Pinned'),
+                              const SizedBox(height: 8),
+                              for (final n in pinned) noticeCard(n),
+                            ],
+                            if (unpinned.isNotEmpty) ...[
+                              const _SectionLabel('Recent'),
+                              const SizedBox(height: 8),
+                              for (final n in unpinned) noticeCard(n),
+                            ],
+                          ],
+                  ),
+                  tabList(
+                    scheduled.isEmpty
+                        ? const [
+                            EmptyState(
+                              icon: Icons.schedule_rounded,
+                              title: 'Nothing scheduled.',
+                            ),
+                          ]
+                        : [for (final n in scheduled) noticeCard(n)],
+                  ),
+                  tabList(
+                    history.isEmpty
+                        ? const [
+                            EmptyState(
+                              icon: Icons.history_rounded,
+                              title: 'No notices yet.',
+                            ),
+                          ]
+                        : [
+                            for (final n in history)
+                              noticeCard(n, showStatus: true),
+                          ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -416,3 +456,207 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+/// Collapsing header for the Notice Board, matching [MealScreen]'s
+/// "Monthly Details" `_DynamicMealHeaderDelegate` exactly: orange band
+/// with the page title fades/shrinks into the white sheet as the body
+/// scrolls, with the "Create Notice" button and tab switcher pinned at
+/// the header's bottom throughout.
+class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final Widget tabSwitcher;
+  final VoidCallback onCreateNotice;
+  final double safeAreaTop;
+
+  _DynamicNoticeHeaderDelegate({
+    required this.surface,
+    required this.tabSwitcher,
+    required this.onCreateNotice,
+    required this.safeAreaTop,
+  });
+
+  @override
+  double get minExtent => safeAreaTop + 150.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 234.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background: Orange top, White bottom
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        // Expanded Content (Fades out)
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Orange Header Content
+                    Container(
+                      height: safeAreaTop + 56,
+                      padding: EdgeInsets.only(
+                        top: safeAreaTop,
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                      ),
+                      alignment: Alignment.centerLeft,
+                      child: const Text(
+                        'Notice Board',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    // White Card Content (Details)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                        top: 16,
+                      ),
+                      child: const Text(
+                        "The house's communication hub - independent of Meal, Utilities and Cottage Balance.",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14,
+                          color: Color(0xFF303030),
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // Collapsed Content (Fades in)
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Notice Board',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: surface.foreground,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Common bottom elements (Create Notice button & tab switcher)
+        Positioned(
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          bottom: 8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: onCreateNotice,
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                    borderRadius: BorderRadius.circular(1000),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 1,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 20, color: Color(0xFF404040)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Create Notice',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF404040),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              tabSwitcher,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicNoticeHeaderDelegate oldDelegate) =>
+      true;
+}

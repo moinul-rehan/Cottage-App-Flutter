@@ -26,23 +26,22 @@ class MealService {
     required double count,
     required String cottageId,
   }) async {
-    await _client.from('daily_meals').upsert(
-      {
-        'user_id': userId,
-        'month_key': monthKey,
-        'meal_date': date,
-        'count': count,
-        'cottage_id': cottageId,
-      },
-      onConflict: 'user_id,meal_date',
-    );
+    await _client.from('daily_meals').upsert({
+      'user_id': userId,
+      'month_key': monthKey,
+      'meal_date': date,
+      'count': count,
+      'cottage_id': cottageId,
+    }, onConflict: 'user_id,meal_date');
   }
 
   /// Fetch all bazaar entries for the given month, with shopper names and avatars.
   Future<List<BazaarEntry>> getBazaarEntries(String monthKey) async {
     final rows = await _client
         .from('bazaar_entries')
-        .select('*, profiles!bazaar_entries_spent_by_fkey(first_name, last_name, avatar_url)')
+        .select(
+          '*, profiles!bazaar_entries_spent_by_fkey(first_name, last_name, avatar_url)',
+        )
         .eq('month_key', monthKey)
         .order('entry_date', ascending: false);
 
@@ -67,7 +66,8 @@ class MealService {
       'amount': amount,
       'entry_date': date,
       'cottage_id': cottageId,
-      if (description != null && description.isNotEmpty) 'description': description,
+      if (description != null && description.isNotEmpty)
+        'description': description,
     });
 
     if (creditDeposit) {
@@ -78,7 +78,8 @@ class MealService {
         'deposit_date': date,
         'cottage_id': cottageId,
         'note': 'Auto-credited from bazaar entry',
-        'created_by': userId, // using the member's ID as creator for standard tracking
+        'created_by':
+            userId, // using the member's ID as creator for standard tracking
       });
     }
   }
@@ -90,11 +91,14 @@ class MealService {
     required String date,
     String? description,
   }) async {
-    await _client.from('bazaar_entries').update({
-      'amount': amount,
-      'entry_date': date,
-      'description': description ?? '',
-    }).eq('id', id);
+    await _client
+        .from('bazaar_entries')
+        .update({
+          'amount': amount,
+          'entry_date': date,
+          'description': description ?? '',
+        })
+        .eq('id', id);
   }
 
   /// Delete a bazaar entry.
@@ -106,7 +110,9 @@ class MealService {
   Future<List<MealDeposit>> getMealDeposits(String monthKey) async {
     final rows = await _client
         .from('meal_deposits')
-        .select('*, profiles!meal_deposits_user_id_fkey(first_name, last_name, avatar_url)')
+        .select(
+          '*, profiles!meal_deposits_user_id_fkey(first_name, last_name, avatar_url)',
+        )
         .eq('month_key', monthKey)
         .order('deposit_date', ascending: false);
 
@@ -141,11 +147,10 @@ class MealService {
     required String date,
     String? note,
   }) async {
-    await _client.from('meal_deposits').update({
-      'amount': amount,
-      'deposit_date': date,
-      'note': note ?? '',
-    }).eq('id', id);
+    await _client
+        .from('meal_deposits')
+        .update({'amount': amount, 'deposit_date': date, 'note': note ?? ''})
+        .eq('id', id);
   }
 
   /// Delete a meal deposit.

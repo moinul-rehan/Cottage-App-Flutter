@@ -27,19 +27,42 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   final _service = DashboardService();
   late Future<(Profile, DashboardData)> _future;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = _load();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A request in flight when the OS suspends the app (e.g. phone sleeps
+    // overnight) has its socket killed without ever completing or erroring
+    // -- the awaiting Future just hangs forever, leaving the screen stuck
+    // on its loading spinner. Reloading on resume recovers from that;
+    // combined with _load()'s timeout below, the screen can't get stuck
+    // for longer than one foreground/background cycle.
+    if (state == AppLifecycleState.resumed) _retry();
+  }
+
   Future<(Profile, DashboardData)> _load() async {
-    final profile = await _service.getCurrentProfile();
-    final data = await _service.load(profile);
+    final profile = await _service.getCurrentProfile().timeout(
+      const Duration(seconds: 15),
+    );
+    final data = await _service
+        .load(profile)
+        .timeout(const Duration(seconds: 15));
     return (profile, data);
   }
 
@@ -66,11 +89,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 40, color: CottageColors.destructive),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
                     const SizedBox(height: 12),
-                    Text('Could not load the dashboard.\n${snapshot.error}', textAlign: TextAlign.center),
+                    Text(
+                      'Could not load the dashboard.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _retry, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _retry,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
@@ -107,7 +140,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: padding),
-                        child: DashboardSummaryCard(profile: profile, data: data),
+                        child: DashboardSummaryCard(
+                          profile: profile,
+                          data: data,
+                        ),
                       ),
                     ],
                   ),
@@ -122,7 +158,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 24),
                       UtilityExpenseList(data: data, profile: profile),
                       const SizedBox(height: 24),
-                      MemberMealSummaryList(rows: data.memberMealRows, bazaarDuties: data.bazaarDuties),
+                      MemberMealSummaryList(
+                        rows: data.memberMealRows,
+                        bazaarDuties: data.bazaarDuties,
+                      ),
                       const SizedBox(height: 24),
                     ]),
                   ),

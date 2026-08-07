@@ -50,17 +50,28 @@ class Notice {
   });
 
   factory Notice.fromMap(Map<String, dynamic> map) {
-    DateTime? parseNullable(dynamic v) => v == null ? null : DateTime.parse(v as String);
+    DateTime? parseNullable(dynamic v) =>
+        v == null ? null : DateTime.parse(v as String);
     return Notice(
       id: map['id'] as String,
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       type: noticeTypeFromString(map['type'] as String? ?? 'general'),
-      priority: noticePriorityFromString(map['priority'] as String? ?? 'normal'),
-      visibility: noticeVisibilityFromString(map['visibility'] as String? ?? 'everyone'),
-      targetMemberIds: (map['target_member_ids'] as List?)?.map((e) => e as String).toList() ?? const [],
+      priority: noticePriorityFromString(
+        map['priority'] as String? ?? 'normal',
+      ),
+      visibility: noticeVisibilityFromString(
+        map['visibility'] as String? ?? 'everyone',
+      ),
+      targetMemberIds:
+          (map['target_member_ids'] as List?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       isPinned: map['is_pinned'] as bool? ?? false,
-      pinDuration: pinDurationFromString(map['pin_duration'] as String? ?? 'none'),
+      pinDuration: pinDurationFromString(
+        map['pin_duration'] as String? ?? 'none',
+      ),
       pinUntilDate: parseNullable(map['pin_until_date']),
       isAnonymous: map['is_anonymous'] as bool? ?? false,
       publishAt: DateTime.parse(map['publish_at'] as String),
@@ -76,18 +87,23 @@ class Notice {
     );
   }
 
-  NoticeStatus get status => computeStatus(archivedAt: archivedAt, publishAt: publishAt, expiresAt: expiresAt);
+  NoticeStatus get status => computeStatus(
+    archivedAt: archivedAt,
+    publishAt: publishAt,
+    expiresAt: expiresAt,
+  );
 
   bool get effectivelyPinned => isEffectivelyPinned(
-        isPinned: isPinned,
-        pinDuration: pinDuration,
-        pinUntilDate: pinUntilDate,
-        publishAt: publishAt,
-        expiresAt: expiresAt,
-        archivedAt: archivedAt,
-      );
+    isPinned: isPinned,
+    pinDuration: pinDuration,
+    pinUntilDate: pinUntilDate,
+    publishAt: publishAt,
+    expiresAt: expiresAt,
+    archivedAt: archivedAt,
+  );
 
-  bool visibleTo({required String profileId, required bool isSuperAdmin}) => isNoticeVisibleTo(
+  bool visibleTo({required String profileId, required bool isSuperAdmin}) =>
+      isNoticeVisibleTo(
         visibility: visibility,
         createdBy: createdBy,
         targetMemberIds: targetMemberIds,
@@ -101,9 +117,13 @@ class Notice {
 List<Notice> sortNoticesForDisplay(List<Notice> notices) {
   final list = List<Notice>.of(notices);
   list.sort((a, b) {
-    if (a.type == NoticeType.emergency && b.type != NoticeType.emergency) return -1;
-    if (b.type == NoticeType.emergency && a.type != NoticeType.emergency) return 1;
-    final p = kPriorityMeta[a.priority]!.order.compareTo(kPriorityMeta[b.priority]!.order);
+    if (a.type == NoticeType.emergency && b.type != NoticeType.emergency)
+      return -1;
+    if (b.type == NoticeType.emergency && a.type != NoticeType.emergency)
+      return 1;
+    final p = kPriorityMeta[a.priority]!.order.compareTo(
+      kPriorityMeta[b.priority]!.order,
+    );
     if (p != 0) return p;
     return b.publishAt.compareTo(a.publishAt);
   });

@@ -52,6 +52,12 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
 
+  # Launch tel:/mailto: links (Contacts screen Call/Email actions).
+  url_launcher: ^6.3.1
+
+  # Persists whether the first-launch onboarding carousel has been seen.
+  shared_preferences: ^2.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

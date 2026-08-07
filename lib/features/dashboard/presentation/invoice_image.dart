@@ -10,8 +10,8 @@ import 'package:cottage/helpers/format_month.dart';
 /// constant, so the Flutter invoice reads as the same document as the web
 /// app's canvas-rendered PNG.
 class _InvoiceColors {
-  static const primary = Color(0xFFDE7356);
-  static const primaryTint = Color(0xFFFBEAE5);
+  static const primary = Color(0xFFE66140);
+  static const primaryTint = Color(0xFFFBE7E2);
   static const foreground = Color(0xFF17191E);
   static const muted = Color(0xFF7A818D);
   static const border = Color(0xFFE4E5E8);

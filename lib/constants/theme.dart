@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 class CottageColors {
   CottageColors._();
 
-  static const primary = Color(0xFFDE7356);
+  static const primary = Color(0xFFE66140);
   static const primaryForeground = Color(0xFFFFFFFF);
   static const destructive = Color(0xFFFF4F4F);
 }
@@ -69,13 +69,13 @@ class CottageSurface extends ThemeExtension<CottageSurface> {
     foreground: Color(0xFF17191E),
     mutedForeground: Color(0xFF7A818D),
     border: Color(0xFFE4E5E8),
-    accent: Color(0xFFFBEAE5),
+    accent: Color(0xFFFBE7E2),
     accentForeground: CottageColors.primary,
     secondary: Color(0xFFF4F4F6),
     muted: Color(0xFFE4E5E8),
     navBackground: Color(0xFF171717),
     navInactive: Color(0xFFA3A3A3),
-    toneBlueBg: Color(0xFFFBEAE5),
+    toneBlueBg: Color(0xFFFBE7E2),
     toneBlueFg: CottageColors.primary,
     toneGreenBg: Color(0x2663B64E),
     toneGreenFg: Color(0xFF63B64E),
@@ -91,7 +91,7 @@ class CottageSurface extends ThemeExtension<CottageSurface> {
     foreground: Color(0xFFF6F6F6),
     mutedForeground: Color(0xFF888888),
     border: Color(0xFF3D3D3D),
-    accent: Color(0x33DE7356),
+    accent: Color(0x33E66140),
     accentForeground: CottageColors.primary,
     secondary: Color(0xFF292929),
     muted: Color(0xFF3D3D3D),
@@ -99,7 +99,7 @@ class CottageSurface extends ThemeExtension<CottageSurface> {
     // literally (not a CSS var), so the bar looks identical in light/dark.
     navBackground: Color(0xFF171717),
     navInactive: Color(0xFFA3A3A3),
-    toneBlueBg: Color(0x33DE7356),
+    toneBlueBg: Color(0x33E66140),
     toneBlueFg: CottageColors.primary,
     toneGreenBg: Color(0x3363B64E),
     toneGreenFg: Color(0xFF63B64E),
@@ -215,7 +215,7 @@ ThemeData buildCottageTheme(Brightness brightness) {
         foregroundColor: CottageColors.primaryForeground,
         minimumSize: const Size.fromHeight(48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
     switchTheme: SwitchThemeData(

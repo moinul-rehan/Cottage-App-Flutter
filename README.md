@@ -133,7 +133,7 @@ lib/
 
 ## 🎨 Design Language
 
-Cottage's UI mirrors the web app's design tokens for a consistent cross-platform feel — a warm brand orange (`#DE7356`) drives buttons and active states, with dedicated light/dark surface palettes and status tone colors (blue, green, orange, red) for badges and balances throughout the app.
+Cottage's UI mirrors the web app's design tokens for a consistent cross-platform feel — a warm brand orange (`#E66140`) drives buttons and active states, with dedicated light/dark surface palettes and status tone colors (blue, green, orange, red) for badges and balances throughout the app.
 
 ---
 
