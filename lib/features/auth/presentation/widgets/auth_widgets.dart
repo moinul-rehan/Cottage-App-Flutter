@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cottage/constants/theme.dart';
 
 /// Shared building blocks for the auth screens (Login/Signup/ForgotPassword)
@@ -37,12 +38,19 @@ class AuthWordmark extends StatelessWidget {
 
 /// Mirrors the web's `<Input className="h-12 rounded-2xl px-4 text-base" />`
 /// styling: 48px tall, 24px-radius rounded corners, muted/40%-opacity fill.
-class AuthTextField extends StatelessWidget {
+/// Per the Figma "Cottage" auth screens (node 1:3661/1:3438): [required]
+/// renders a red asterisk after the label, [leadingIcon] shows a small
+/// outline icon inside the field, and a password field (obscureText: true)
+/// automatically gets a tap-to-reveal trailing eye icon -- no separate prop
+/// needed, callers just pass obscureText as before.
+class AuthTextField extends StatefulWidget {
   const AuthTextField({
     super.key,
     required this.label,
     required this.controller,
     this.obscureText = false,
+    this.required = false,
+    this.leadingIcon,
     this.keyboardType,
     this.autofillHints,
     this.validator,
@@ -52,10 +60,19 @@ class AuthTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool obscureText;
+  final bool required;
+  final IconData? leadingIcon;
   final TextInputType? keyboardType;
   final List<String>? autofillHints;
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
+
+  @override
+  State<AuthTextField> createState() => _AuthTextFieldState();
+}
+
+class _AuthTextFieldState extends State<AuthTextField> {
+  late bool _obscured = widget.obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -64,23 +81,45 @@ class AuthTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: surface.foreground),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.label,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: surface.foreground),
+            ),
+            if (widget.required) ...[
+              const SizedBox(width: 3),
+              const Text('*', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: CottageColors.destructive)),
+            ],
+          ],
         ),
         const SizedBox(height: 6),
         TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          autofillHints: autofillHints,
-          validator: validator,
-          textInputAction: textInputAction,
+          controller: widget.controller,
+          obscureText: _obscured,
+          keyboardType: widget.keyboardType,
+          autofillHints: widget.autofillHints,
+          validator: widget.validator,
+          textInputAction: widget.textInputAction,
           style: TextStyle(fontSize: 16, color: surface.foreground),
           decoration: InputDecoration(
             filled: true,
             fillColor: surface.muted.withValues(alpha: 0.4),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            prefixIcon: widget.leadingIcon != null
+                ? Icon(widget.leadingIcon, size: 20, color: surface.mutedForeground)
+                : null,
+            suffixIcon: widget.obscureText
+                ? IconButton(
+                    icon: Icon(
+                      _obscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      size: 20,
+                      color: surface.mutedForeground,
+                    ),
+                    onPressed: () => setState(() => _obscured = !_obscured),
+                  )
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(24),
               borderSide: BorderSide(color: surface.border),
@@ -261,6 +300,110 @@ class _GoogleGlyphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Inline "[icon] Cottage" chip used inside the Login/Register subtitle line
+/// (Figma: "Sign in to your [icon]Cottage account as a member") -- a small
+/// rounded logo mark next to the bold brand name, wrapped in a [Wrap] by the
+/// caller alongside the surrounding plain-text spans so the whole sentence
+/// reflows naturally on narrow screens.
+class AuthInlineBrand extends StatelessWidget {
+  const AuthInlineBrand({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20 * 0.22),
+          child: Image.asset('assets/images/logo.png', width: 20, height: 20),
+        ),
+        const SizedBox(width: 5),
+        const Text(
+          'Cottage',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CottageColors.primary),
+        ),
+      ],
+    );
+  }
+}
+
+/// The orange brand panel from the Figma "Cottage" auth screens (node
+/// 1:3661 Login / 1:3438 Register) -- on desktop it's a full-height curved
+/// side panel; here it's collapsed into a rounded-bottom hero banner at the
+/// top of the screen (mobile has no room for a side-by-side split), keeping
+/// the same content: white logo mark, "Welcome to Cottage!" headline, a
+/// context line, and an outlined pill button that jumps to the other auth
+/// screen (Login <-> Register). The decorative house/magnifying-glass
+/// illustration behind the text in Figma is a low-value decorative asset
+/// for this panel's now-much-smaller size, so it's dropped rather than
+/// sourced as an image.
+class AuthHeroPanel extends StatelessWidget {
+  const AuthHeroPanel({
+    super.key,
+    required this.contextLine,
+    required this.ctaLabel,
+    required this.onCtaPressed,
+  });
+
+  final String contextLine;
+  final String ctaLabel;
+  final VoidCallback onCtaPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+      decoration: const BoxDecoration(
+        color: CottageColors.primary,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(48)),
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(64 * 0.22),
+            child: Container(
+              width: 64,
+              height: 64,
+              color: Colors.white,
+              padding: const EdgeInsets.all(10),
+              child: Image.asset('assets/images/logo.png'),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Welcome to Cottage!',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.archivo(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            contextLine,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85)),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: onCtaPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(ctaLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Outline "Continue with Google" button -- background = page background

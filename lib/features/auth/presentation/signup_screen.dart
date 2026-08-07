@@ -1,5 +1,5 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
@@ -30,6 +30,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _submitting = false;
   bool _googleSubmitting = false;
   String? _error;
@@ -42,6 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -114,131 +116,157 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 384),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const AuthWordmark(),
-                  const SizedBox(height: 32),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Start a Cottage',
-                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: context.surface.foreground),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Sign up for a new Cottage - you'll be its admin.",
-                        style: TextStyle(fontSize: 14, color: context.surface.mutedForeground),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  Form(
-                    key: _formKey,
+        bottom: false,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Figma node 1:3438 "Register": same hero-panel treatment as
+              // LoginScreen, mirrored copy/CTA (jumps back to Login instead).
+              AuthHeroPanel(
+                contextLine: 'Already a member of any Cottage?',
+                ctaLabel: 'Log In',
+                onCtaPressed: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 384),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AuthTextField(
-                          label: 'Cottage name',
-                          controller: _cottageNameController,
-                          textInputAction: TextInputAction.next,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Cottage name is required' : null,
+                        Text(
+                          'Register',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.archivo(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                            color: CottageColors.primary,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 6),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 4,
                           children: [
-                            Expanded(
-                              child: AuthTextField(
-                                label: 'First name',
-                                controller: _firstNameController,
-                                textInputAction: TextInputAction.next,
-                                validator: (value) =>
-                                    (value == null || value.trim().isEmpty) ? 'Required' : null,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: AuthTextField(
-                                label: 'Last name',
-                                controller: _lastNameController,
-                                textInputAction: TextInputAction.next,
-                              ),
-                            ),
+                            Text('Sign up for new', style: TextStyle(fontSize: 14, color: context.surface.mutedForeground)),
+                            const AuthInlineBrand(),
+                            Text('· You\'ll be its admin', style: TextStyle(fontSize: 14, color: context.surface.mutedForeground)),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        AuthTextField(
-                          label: 'Email',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          textInputAction: TextInputAction.next,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Email is required' : null,
+                        const SizedBox(height: 32),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AuthTextField(
+                                label: 'Cottage Name',
+                                leadingIcon: Icons.home_outlined,
+                                controller: _cottageNameController,
+                                textInputAction: TextInputAction.next,
+                                validator: (value) =>
+                                    (value == null || value.trim().isEmpty) ? 'Cottage name is required' : null,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: AuthTextField(
+                                      label: 'First Name',
+                                      controller: _firstNameController,
+                                      textInputAction: TextInputAction.next,
+                                      validator: (value) =>
+                                          (value == null || value.trim().isEmpty) ? 'Required' : null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: AuthTextField(
+                                      label: 'Last Name',
+                                      controller: _lastNameController,
+                                      textInputAction: TextInputAction.next,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              AuthTextField(
+                                label: 'Email',
+                                required: true,
+                                leadingIcon: Icons.mail_outline,
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                autofillHints: const [AutofillHints.email],
+                                textInputAction: TextInputAction.next,
+                                validator: (value) =>
+                                    (value == null || value.trim().isEmpty) ? 'Email is required' : null,
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: AuthTextField(
+                                      label: 'Password',
+                                      required: true,
+                                      controller: _passwordController,
+                                      obscureText: true,
+                                      autofillHints: const [AutofillHints.newPassword],
+                                      textInputAction: TextInputAction.next,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) return 'Required';
+                                        if (value.length < 8) return 'Min 8 characters';
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: AuthTextField(
+                                      label: 'Password',
+                                      required: true,
+                                      controller: _confirmPasswordController,
+                                      obscureText: true,
+                                      textInputAction: TextInputAction.done,
+                                      validator: (value) =>
+                                          value != _passwordController.text ? "Doesn't match" : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_error != null) ...[
+                                const SizedBox(height: 10),
+                                Text(_error!, style: const TextStyle(color: CottageColors.destructive, fontSize: 14)),
+                              ],
+                              if (_success != null) ...[
+                                const SizedBox(height: 10),
+                                Text(_success!, style: const TextStyle(color: Color(0xFF059669), fontSize: 14)),
+                              ],
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _submitting ? null : _submit,
+                                child: Text(_submitting ? 'Creating your cottage…' : 'Sign up for a new Cottage'),
+                              ),
+                              const SizedBox(height: 16),
+                              const AuthOrDivider(),
+                              const SizedBox(height: 16),
+                              GoogleSignInButton(onPressed: _signUpWithGoogle, enabled: !_googleSubmitting),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        AuthTextField(
-                          label: 'Password',
-                          controller: _passwordController,
-                          obscureText: true,
-                          autofillHints: const [AutofillHints.newPassword],
-                          textInputAction: TextInputAction.done,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Password is required';
-                            if (value.length < 8) return 'Password must be at least 8 characters.';
-                            return null;
-                          },
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 10),
-                          Text(_error!, style: const TextStyle(color: CottageColors.destructive, fontSize: 14)),
-                        ],
-                        if (_success != null) ...[
-                          const SizedBox(height: 10),
-                          Text(_success!, style: const TextStyle(color: Color(0xFF059669), fontSize: 14)),
-                        ],
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: _submitting ? null : _submit,
-                          child: Text(_submitting ? 'Creating your cottage…' : 'Sign up for a new Cottage'),
-                        ),
-                        const SizedBox(height: 20),
-                        const AuthOrDivider(),
-                        const SizedBox(height: 20),
-                        GoogleSignInButton(onPressed: _signUpWithGoogle, enabled: !_googleSubmitting),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  Text.rich(
-                    TextSpan(
-                      style: TextStyle(fontSize: 14, color: context.surface.mutedForeground),
-                      children: [
-                        const TextSpan(text: 'Already have an account? '),
-                        TextSpan(
-                          text: 'Sign in as a Cottage member',
-                          style: const TextStyle(fontWeight: FontWeight.w600, color: CottageColors.primary),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                ),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

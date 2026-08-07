@@ -1,5 +1,5 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
@@ -80,106 +80,114 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 384),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const AuthWordmark(),
-                  const SizedBox(height: 32),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back',
-                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: context.surface.foreground),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Sign in with the account your admin created for you.',
-                        style: TextStyle(fontSize: 14, color: context.surface.mutedForeground),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  Form(
-                    key: _formKey,
+        bottom: false,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Figma node 1:3661 "Login page": the desktop split-panel's
+              // orange side becomes this rounded-bottom hero banner on
+              // mobile, with the same "switch to the other auth screen" CTA.
+              AuthHeroPanel(
+                contextLine: "Don't have a Cottage?",
+                ctaLabel: 'Create your own Cottage',
+                onCtaPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SignupScreen()),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 384),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AuthTextField(
-                          label: 'Email',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          textInputAction: TextInputAction.next,
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Email is required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        AuthTextField(
-                          label: 'Password',
-                          controller: _passwordController,
-                          obscureText: true,
-                          autofillHints: const [AutofillHints.password],
-                          textInputAction: TextInputAction.done,
-                          validator: (value) =>
-                              (value == null || value.isEmpty) ? 'Password is required' : null,
-                        ),
-                        const SizedBox(height: 6),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
-                            ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: CottageColors.primary),
-                            ),
+                        Text(
+                          'Login',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.archivo(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                            color: CottageColors.primary,
                           ),
                         ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 10),
-                          Text(_error!, style: const TextStyle(color: CottageColors.destructive, fontSize: 14)),
-                        ],
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: _submitting ? null : _submit,
-                          child: Text(_submitting ? 'Signing in…' : 'Sign in as Cottage member'),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 4,
+                          children: [
+                            Text('Sign in to your', style: TextStyle(fontSize: 14, color: context.surface.mutedForeground)),
+                            const AuthInlineBrand(),
+                            Text('account as a member', style: TextStyle(fontSize: 14, color: context.surface.mutedForeground)),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        const AuthOrDivider(),
-                        const SizedBox(height: 20),
-                        GoogleSignInButton(onPressed: _signInWithGoogle, enabled: !_googleSubmitting),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text.rich(
-                    TextSpan(
-                      style: TextStyle(fontSize: 14, color: context.surface.mutedForeground),
-                      children: [
-                        const TextSpan(text: 'Starting a new house? '),
-                        TextSpan(
-                          text: 'Sign up for a new Cottage',
-                          style: const TextStyle(fontWeight: FontWeight.w600, color: CottageColors.primary),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const SignupScreen()),
+                        const SizedBox(height: 32),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AuthTextField(
+                                label: 'Email',
+                                required: true,
+                                leadingIcon: Icons.mail_outline,
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                autofillHints: const [AutofillHints.email],
+                                textInputAction: TextInputAction.next,
+                                validator: (value) =>
+                                    (value == null || value.trim().isEmpty) ? 'Email is required' : null,
+                              ),
+                              const SizedBox(height: 16),
+                              AuthTextField(
+                                label: 'Password',
+                                required: true,
+                                leadingIcon: Icons.lock_outline,
+                                controller: _passwordController,
+                                obscureText: true,
+                                autofillHints: const [AutofillHints.password],
+                                textInputAction: TextInputAction.done,
+                                validator: (value) =>
+                                    (value == null || value.isEmpty) ? 'Password is required' : null,
+                              ),
+                              const SizedBox(height: 6),
+                              Align(
+                                alignment: Alignment.center,
+                                child: GestureDetector(
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                  ),
+                                  child: const Text(
+                                    'Forgot password?',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFFD40924)),
+                                  ),
                                 ),
+                              ),
+                              if (_error != null) ...[
+                                const SizedBox(height: 10),
+                                Text(_error!, style: const TextStyle(color: CottageColors.destructive, fontSize: 14)),
+                              ],
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _submitting ? null : _submit,
+                                child: Text(_submitting ? 'Signing in…' : 'Sign In'),
+                              ),
+                              const SizedBox(height: 16),
+                              const AuthOrDivider(),
+                              const SizedBox(height: 16),
+                              GoogleSignInButton(onPressed: _signInWithGoogle, enabled: !_googleSubmitting),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
