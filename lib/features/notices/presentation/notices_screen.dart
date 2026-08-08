@@ -218,19 +218,31 @@ class _NoticesScreenState extends State<NoticesScreen>
             children: [
               const _NoticeSectionLabel('NOTICE TYPE'),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Column(
                 children: [
-                  for (final t in _typeGridOrder)
-                    SizedBox(
-                      width: (335 - 16) / 3,
-                      child: _NoticeTypeOption(
-                        type: t,
-                        selected: type == t,
-                        onTap: () => setSheetState(() => type = t),
-                      ),
+                  for (int row = 0; row < 2; row++) ...[
+                    if (row > 0) const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (int col = 0; col < 3; col++) ...[
+                          if (col > 0) const SizedBox(width: 8),
+                          Expanded(
+                            child: Builder(
+                              builder: (_) {
+                                final t = _typeGridOrder[row * 3 + col];
+                                return _NoticeTypeOption(
+                                  type: t,
+                                  selected: type == t,
+                                  onTap: () => setSheetState(() => type = t),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -946,13 +958,17 @@ class _NoticeFormDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    // The sheet's outer height is already capped (showCottageSheet: 85% of
+    // screen height) -- this form is long enough to exceed that on most
+    // phones, so the body scrolls internally rather than overflowing while
+    // the icon/title/close header stays put above it.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Row(
             children: [
               const Icon(Icons.sticky_note_2_outlined, size: 24, color: Color(0xFF17191E)),
               const SizedBox(width: 8),
@@ -974,10 +990,17 @@ class _NoticeFormDrawer extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
+        ),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
