@@ -20,7 +20,15 @@ class Profile {
   /// so a missing value should never be misread as inactive.
   final bool isActive;
 
-  final List<String> permissions;
+  /// Per-action grants a super admin can hand to an ordinary member --
+  /// mirror `profiles.can_add_*` (see supabase/migrations/0002, 0004, 0010,
+  /// 0022), each independently enforced by RLS server-side. There is no
+  /// generic `permissions` array column; these are five real booleans.
+  final bool canAddExpenses;
+  final bool canAddBazaar;
+  final bool canAddMeals;
+  final bool canAddDeposit;
+  final bool canAddNotice;
 
   const Profile({
     required this.id,
@@ -33,7 +41,11 @@ class Profile {
     this.address,
     this.role = 'member',
     this.isActive = true,
-    this.permissions = const [],
+    this.canAddExpenses = true,
+    this.canAddBazaar = true,
+    this.canAddMeals = true,
+    this.canAddDeposit = false,
+    this.canAddNotice = false,
   });
 
   bool get isSuperAdmin => role == 'super_admin';
@@ -50,7 +62,11 @@ class Profile {
       address: map['address'] as String?,
       role: map['role'] as String? ?? 'member',
       isActive: map['is_active'] as bool? ?? true,
-      permissions: (map['permissions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      canAddExpenses: map['can_add_expenses'] as bool? ?? true,
+      canAddBazaar: map['can_add_bazaar'] as bool? ?? true,
+      canAddMeals: map['can_add_meals'] as bool? ?? true,
+      canAddDeposit: map['can_add_deposit'] as bool? ?? false,
+      canAddNotice: map['can_add_notice'] as bool? ?? false,
     );
   }
 

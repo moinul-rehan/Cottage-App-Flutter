@@ -1,0 +1,65 @@
+<!--
+  Cottage — Reauthentication Email Template
+  Paste this into Supabase Dashboard → Authentication → Emails → Reauthentication → Source
+  Or reference it locally via supabase/config.toml:
+    [auth.email.template.reauthentication]
+    subject = "{{ .Token }} is your verification code"
+    content_path = "./supabase/templates/reauthentication.html"
+-->
+<div style="margin:0; padding:0; background-color:#F4F4F6; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F4F6; padding: 48px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="440" cellpadding="0" cellspacing="0" style="max-width:440px; width:100%;">
+
+          <tr>
+            <td style="padding: 0 8px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <img src="https://cottagee.me/logo.png" width="28" height="28" alt="Cottage" style="display:block; width:28px; height:28px; border-radius:7px;" />
+                  </td>
+                  <td style="vertical-align:middle; padding-left:10px; font-size:16px; font-weight:600; color:#17191E; letter-spacing:-0.01em;">
+                    Cottage
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#FFFFFF; border:1px solid #E4E5E8; border-radius:20px; padding: 40px;">
+              <h1 style="margin:0 0 12px; font-size:20px; font-weight:600; color:#17191E; letter-spacing:-0.01em;">
+                Your verification code
+              </h1>
+              <p style="margin:0 0 28px; font-size:14px; line-height:1.65; color:#7A818D;">
+                Use the code below to verify your identity before continuing. It expires shortly.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F4F6; border-radius:12px;">
+                <tr>
+                  <td style="padding:18px; text-align:center; font-size:28px; font-weight:700; letter-spacing:0.28em; color:#DE7356;">
+                    {{ .Token }}
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:20px 0 0; font-size:12px; line-height:1.6; color:#AEB2BA;">
+                Didn't request this code? You can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 24px 8px 0;">
+              <p style="margin:0; font-size:12px; color:#AEB2BA;">
+                © 2026 Cottage
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>

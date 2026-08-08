@@ -190,26 +190,24 @@ class _MembersScreenState extends State<MembersScreen>
   }
 
   Future<void> _showPermissionsSheet(Profile member) async {
-    final permissions = List<String>.from(member.permissions);
+    // Mirrors the five real `profiles.can_add_*` columns (see
+    // supabase/migrations/0002, 0004, 0010, 0022) -- there is no generic
+    // permissions array, so each toggle is its own boolean.
+    var canAddExpenses = member.canAddExpenses;
+    var canAddBazaar = member.canAddBazaar;
+    var canAddMeals = member.canAddMeals;
+    var canAddDeposit = member.canAddDeposit;
+    var canAddNotice = member.canAddNotice;
 
     await showCottageSheet(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
-          Widget buildToggle(String title, String key) {
-            final hasPerm = permissions.contains(key);
+          Widget buildToggle(String title, bool value, ValueChanged<bool> onChanged) {
             return CheckboxListTile(
               title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              value: hasPerm,
-              onChanged: (val) {
-                setSheetState(() {
-                  if (val == true) {
-                    permissions.add(key);
-                  } else {
-                    permissions.remove(key);
-                  }
-                });
-              },
+              value: value,
+              onChanged: (val) => setSheetState(() => onChanged(val ?? false)),
               contentPadding: EdgeInsets.zero,
               activeColor: CottageColors.primary,
               controlAffinity: ListTileControlAffinity.leading,
@@ -224,15 +222,23 @@ class _MembersScreenState extends State<MembersScreen>
                 style: TextStyle(fontSize: 13, color: Color(0xFF7A818D)),
               ),
               const SizedBox(height: 8),
-              buildToggle('Add Utility Expenses', 'add_utility_expenses'),
-              buildToggle('Add meal Cost', 'add_meal_cost'),
-              buildToggle('Add Meal', 'add_meal'),
-              buildToggle('Add meal deposit', 'add_meal_deposit'),
+              buildToggle('Add Utility Expenses', canAddExpenses, (v) => canAddExpenses = v),
+              buildToggle('Add Bazar / Meal Cost', canAddBazaar, (v) => canAddBazaar = v),
+              buildToggle('Add Meal', canAddMeals, (v) => canAddMeals = v),
+              buildToggle('Add Meal Deposit', canAddDeposit, (v) => canAddDeposit = v),
+              buildToggle('Post Notices', canAddNotice, (v) => canAddNotice = v),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
                   Navigator.pop(sheetContext);
-                  await _memberService.updatePermissions(member.id, permissions);
+                  await _memberService.updatePermissions(
+                    userId: member.id,
+                    canAddExpenses: canAddExpenses,
+                    canAddBazaar: canAddBazaar,
+                    canAddMeals: canAddMeals,
+                    canAddDeposit: canAddDeposit,
+                    canAddNotice: canAddNotice,
+                  );
                   _refresh();
                 },
                 child: const Text('Save Permissions'),
