@@ -6,6 +6,8 @@ import '../../dashboard/data/dashboard_service.dart';
 import '../../bazaar_duty/data/bazaar_duty_models.dart';
 import '../../bazaar_duty/data/bazaar_duty_service.dart';
 import 'package:cottage/constants/theme.dart';
+import 'package:cottage/helpers/supabase_service.dart';
+import 'package:cottage/common_widgets/cottage_loader.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
@@ -271,36 +273,45 @@ class _MembersScreenState extends State<MembersScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: TextField(
+                  child: _InviteTextField(
+                    label: 'First Name',
+                    isRequired: true,
+                    hintText: 'John',
                     controller: firstNameCtrl,
-                    decoration: const InputDecoration(labelText: 'First Name *', hintText: 'John'),
                     textCapitalization: TextCapitalization.words,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: TextField(
+                  child: _InviteTextField(
+                    label: 'Last Name',
+                    hintText: 'Doe',
                     controller: lastNameCtrl,
-                    decoration: const InputDecoration(labelText: 'Last Name', hintText: 'Doe'),
                     textCapitalization: TextCapitalization.words,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
+            _InviteTextField(
+              label: 'Email',
+              isRequired: true,
+              hintText: 'johndoe@gmail.com',
               controller: emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email *', hintText: 'johndoe@gmail.com'),
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
-            TextField(
+            _InviteTextField(
+              label: 'Room Label (optional)',
+              hintText: 'e.g. Room 2',
               controller: roomCtrl,
-              decoration: const InputDecoration(labelText: 'Room Label (optional)', hintText: 'e.g. Room 2'),
             ),
             const SizedBox(height: 12),
-            const Text('Role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            const Text(
+              'Role',
+              style: TextStyle(fontSize: 13, color: Color(0xFF404040), fontWeight: FontWeight.w400),
+            ),
+            const SizedBox(height: 6),
             Row(
               children: [
                 Expanded(
@@ -321,7 +332,9 @@ class _MembersScreenState extends State<MembersScreen>
               ],
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
               onPressed: () async {
                 final firstName = firstNameCtrl.text.trim();
                 final email = emailCtrl.text.trim();
@@ -353,7 +366,23 @@ class _MembersScreenState extends State<MembersScreen>
                   showToast(context, 'Could not open a mail app.');
                 }
               },
-              child: const Text('Send Invite'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD1593B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Send Invite',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
             ),
           ],
         ),
@@ -367,12 +396,13 @@ class _MembersScreenState extends State<MembersScreen>
     return FutureBuilder<_MembersData>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (!snapshot.hasData && snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             backgroundColor: CottageColors.primary,
-            body: Center(child: CircularProgressIndicator(color: Colors.white)),
+            body: Center(child: CottageLoader()),
           );
         }
+
         if (snapshot.hasError) {
           return Scaffold(
             backgroundColor: CottageColors.primary,
@@ -411,7 +441,7 @@ class _MembersScreenState extends State<MembersScreen>
 
         final data = snapshot.data!;
 
-        return Scaffold(
+        final pageContent = Scaffold(
           backgroundColor: CottageColors.primary,
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -474,6 +504,21 @@ class _MembersScreenState extends State<MembersScreen>
             ),
           ),
         );
+
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Stack(
+            children: [
+              pageContent,
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.15),
+                  child: const Center(child: CottageLoader()),
+                ),
+              ),
+            ],
+          );
+        }
+        return pageContent;
       },
     );
   }
@@ -491,10 +536,10 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => safeAreaTop + 90.0;
+  double get minExtent => safeAreaTop + 88.0;
 
   @override
-  double get maxExtent => safeAreaTop + 180.0;
+  double get maxExtent => safeAreaTop + 148.0;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
@@ -508,7 +553,7 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
           top: 0,
           left: 0,
           right: 0,
-          height: safeAreaTop + 56 - (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          height: (safeAreaTop + 56) * (1 - progress),
           child: Container(color: CottageColors.primary),
         ),
         Positioned(
@@ -602,14 +647,22 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
                     left: context.responsivePadding,
                     right: context.responsivePadding,
                   ),
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Members',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      color: surface.foreground,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Members',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: surface.foreground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -620,7 +673,7 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
         Positioned(
           left: context.responsivePadding,
           right: context.responsivePadding,
-          bottom: 8,
+          bottom: 12,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,7 +683,6 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
                   _InviteButton(onTap: onInviteTap),
                 ],
               ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -925,6 +977,89 @@ class _ContactRow extends StatelessWidget {
   }
 }
 
+class _InviteTextField extends StatelessWidget {
+  final String label;
+  final bool isRequired;
+  final String hintText;
+  final TextEditingController controller;
+  final TextCapitalization textCapitalization;
+  final TextInputType keyboardType;
+
+  const _InviteTextField({
+    required this.label,
+    this.isRequired = false,
+    required this.hintText,
+    required this.controller,
+    this.textCapitalization = TextCapitalization.none,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF404040),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            if (isRequired) ...[
+              const SizedBox(width: 2),
+              const Text(
+                '*',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFFCC4F4F),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          textCapitalization: textCapitalization,
+          keyboardType: keyboardType,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF404040),
+          ),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFAAAAAA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+            ),
+            isDense: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _RoleChoice extends StatelessWidget {
   final String label;
   final bool selected;
@@ -938,8 +1073,8 @@ class _RoleChoice extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
-          border: Border.all(color: selected ? CottageColors.primary : const Color(0xFFEEEEEE)),
+          color: selected ? const Color(0xFFDE7356) : const Color(0xFFFAFAFA),
+          border: Border.all(color: selected ? const Color(0xFFDE7356) : const Color(0xFFEEEEEE)),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
