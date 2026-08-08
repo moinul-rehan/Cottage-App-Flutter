@@ -5,6 +5,7 @@ import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
+import 'package:cottage/common_widgets/confirm_modal.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../dashboard/data/dashboard_service.dart';
 import '../data/contact.dart';
@@ -178,27 +179,15 @@ class _ContactsScreenState extends State<ContactsScreen>
   }
 
   Future<void> _confirmDelete(Contact contact) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete contact?'),
-        content: Text('Remove ${contact.name} from contacts.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: CottageColors.destructive),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmModal(
+      context,
+      icon: Icons.delete_outline,
+      title: 'Delete contact?',
+      message: "Remove ${contact.name} from contacts. This can't be undone.",
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await _contactService.deleteContact(contact.id);
       _refresh();
     }

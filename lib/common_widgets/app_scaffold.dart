@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/features/notifications/presentation/notification_bell.dart';
 import 'package:cottage/constants/theme.dart';
+import 'confirm_modal.dart';
 
 /// Shared top bar for each tab under [BottomNavShell] -- Cottage wordmark,
 /// with sign-out surfaced only where [showLogout] is true (the Menu tab).
@@ -15,7 +16,17 @@ class AppScaffold extends StatelessWidget {
   /// No manual navigation to LoginScreen here -- the root _AuthGate
   /// (main.dart) listens to onAuthStateChange and swaps to it on its own,
   /// same as the sign-in side of that flow.
-  Future<void> _logout(BuildContext context) => SupabaseService.signOut();
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showConfirmModal(
+      context,
+      icon: Icons.logout_rounded,
+      title: 'Log out?',
+      message: "You'll need to sign in again to access your Cottage.",
+      confirmLabel: 'Log Out',
+    );
+    if (!confirmed) return;
+    await SupabaseService.signOut();
+  }
 
   @override
   Widget build(BuildContext context) {

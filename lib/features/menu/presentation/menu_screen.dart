@@ -5,6 +5,7 @@ import '../data/member_service.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/app_scaffold.dart';
+import 'package:cottage/common_widgets/confirm_modal.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../contacts/presentation/contacts_screen.dart';
@@ -71,6 +72,14 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _logout() async {
+    final confirmed = await showConfirmModal(
+      context,
+      icon: Icons.logout_rounded,
+      title: 'Log out?',
+      message: "You'll need to sign in again to access your Cottage.",
+      confirmLabel: 'Log Out',
+    );
+    if (!confirmed) return;
     await SupabaseService.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

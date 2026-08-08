@@ -9,6 +9,7 @@ import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
+import 'package:cottage/common_widgets/confirm_modal.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../dashboard/presentation/verified_badge.dart';
 
@@ -168,29 +169,15 @@ class _MembersScreenState extends State<MembersScreen>
   }
 
   Future<void> _confirmDeactivate(Profile member) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Deactivate member?'),
-        content: Text(
-          '${member.displayName} will no longer show as an active member of this cottage.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Deactivate',
-              style: TextStyle(color: CottageColors.destructive),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmModal(
+      context,
+      icon: Icons.person_off_outlined,
+      title: 'Deactivate member?',
+      message: '${member.displayName} will no longer show as an active member of this cottage.',
+      confirmLabel: 'Deactivate',
+      destructive: true,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await _memberService.setActive(member.id, false);
       _refresh();
     }
