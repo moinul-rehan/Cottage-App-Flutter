@@ -218,22 +218,29 @@ class _NoticesScreenState extends State<NoticesScreen>
     );
   }
 
+  // Figma node 15:695 ("Self driver requirement"): p-3.217 gap-3.217
+  // rounded-10 wrapper; items px-9.651 py-6.434 rounded-8.043, and
+  // "Scheduled Notices" wraps to 2 lines -- wrapped in IntrinsicHeight with
+  // a stretched Row so all three tabs stay the same height regardless.
   Widget _buildTabSwitcher(CottageSurface surface) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildTabItem(0, 'Notice Feed')),
-          const SizedBox(width: 4),
-          Expanded(child: _buildTabItem(1, 'Scheduled Notices')),
-          const SizedBox(width: 4),
-          Expanded(child: _buildTabItem(2, 'Notice History')),
-        ],
+    return IntrinsicHeight(
+      child: Container(
+        padding: const EdgeInsets.all(3.217),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _buildTabItem(0, 'Notice Feed')),
+            const SizedBox(width: 3.217),
+            Expanded(child: _buildTabItem(1, 'Scheduled Notices')),
+            const SizedBox(width: 3.217),
+            Expanded(child: _buildTabItem(2, 'Notice History')),
+          ],
+        ),
       ),
     );
   }
@@ -246,17 +253,18 @@ class _NoticesScreenState extends State<NoticesScreen>
         _tabController.animateTo(index);
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 9.651, vertical: 6.434),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: active ? CottageColors.primary : const Color(0xFFFAFAFA),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(8.043),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w400,
             color: active ? Colors.white : const Color(0xFF404040),
           ),
         ),

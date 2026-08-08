@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/splash/presentation/splash_screen.dart';
 import 'package:cottage/helpers/onboarding_service.dart';
 import 'package:cottage/helpers/push_notification_service.dart';
 import 'package:cottage/helpers/supabase_service.dart';
@@ -22,8 +23,15 @@ Future<void> main() async {
 
 final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
 
-class CottageApp extends StatelessWidget {
+class CottageApp extends StatefulWidget {
   const CottageApp({super.key});
+
+  @override
+  State<CottageApp> createState() => _CottageAppState();
+}
+
+class _CottageAppState extends State<CottageApp> {
+  bool _showSplash = true;
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +47,22 @@ class CottageApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           home: !SupabaseService.isInitialized
               ? _SupabaseErrorScreen(error: SupabaseService.initializationError)
-              : ValueListenableBuilder<bool>(
-                  valueListenable: OnboardingService.completed,
-                  builder: (context, seenOnboarding, _) {
-                    return seenOnboarding
-                        ? const _AuthGate()
-                        : const OnboardingScreen();
-                  },
+              : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  child: _showSplash
+                      ? SplashScreen(
+                          key: const ValueKey('splash'),
+                          onFinished: () => setState(() => _showSplash = false),
+                        )
+                      : ValueListenableBuilder<bool>(
+                          key: const ValueKey('app'),
+                          valueListenable: OnboardingService.completed,
+                          builder: (context, seenOnboarding, _) {
+                            return seenOnboarding
+                                ? const _AuthGate()
+                                : const OnboardingScreen();
+                          },
+                        ),
                 ),
         );
       },
