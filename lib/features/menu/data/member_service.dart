@@ -25,7 +25,7 @@ class MemberService {
     final rows = await _client
         .from('profiles')
         .select(
-          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, role, is_active',
+          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active',
         )
         .eq('cottage_id', cottageId)
         .order('is_active', ascending: false)

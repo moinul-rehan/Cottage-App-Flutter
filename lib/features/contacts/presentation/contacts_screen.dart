@@ -78,66 +78,101 @@ class _ContactsScreenState extends State<ContactsScreen>
     }
   }
 
+  static const _contactCategories = ['Landlord', 'Electrician', 'Plumber', 'Other'];
+
+  /// Figma node 84:1123 ("Create Contact - Drawer"): Name/Category/Phone
+  /// required, Email optional, Category is a fixed chip picker rather than
+  /// free text -- still stored in the same `label` field ([Contact.label],
+  /// the `level` column), which accepts any string.
   void _showCreateContact(Profile profile) {
     final nameCtrl = TextEditingController();
-    final labelCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    String category = _contactCategories.first;
 
     showCottageSheet(
       context: context,
-      builder: (sheetContext) => CottageSheetContent(
-        title: 'New Contact',
-        children: [
-          TextField(
-            controller: nameCtrl,
-            decoration: const InputDecoration(labelText: 'Name'),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: labelCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Role (e.g. Landlord)',
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => CottageSheetContent(
+          title: 'Create Contact',
+          children: [
+            const Row(
+              children: [
+                Text('Name ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
+                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
+              ],
             ),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: phoneCtrl,
-            decoration: const InputDecoration(labelText: 'Phone'),
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: emailCtrl,
-            decoration: const InputDecoration(labelText: 'Email'),
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              Navigator.pop(sheetContext);
-              await _contactService.createContact(
-                cottageId: profile.cottageId,
-                createdBy: profile.id,
-                name: nameCtrl.text.trim(),
-                label: labelCtrl.text.trim().isEmpty
-                    ? null
-                    : labelCtrl.text.trim(),
-                mobileNumber: phoneCtrl.text.trim().isEmpty
-                    ? null
-                    : phoneCtrl.text.trim(),
-                email: emailCtrl.text.trim().isEmpty
-                    ? null
-                    : emailCtrl.text.trim(),
-              );
-              _refresh();
-            },
-            child: const Text('Add Contact'),
-          ),
-        ],
+            const SizedBox(height: 6),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(hintText: 'e.g. Rafiqul Islam'),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Text('Category ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
+                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final c in _contactCategories)
+                  _CategoryChip(
+                    label: c,
+                    selected: category == c,
+                    onTap: () => setSheetState(() => category = c),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Text('Phone ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
+                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: phoneCtrl,
+              decoration: const InputDecoration(hintText: '01711-223344'),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+            const Text('Email (optional)', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
+            const SizedBox(height: 6),
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(hintText: 'name@example.com'),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                final phone = phoneCtrl.text.trim();
+                if (name.isEmpty || phone.isEmpty) {
+                  showToast(sheetContext, 'Name and phone are required.');
+                  return;
+                }
+                Navigator.pop(sheetContext);
+                await _contactService.createContact(
+                  cottageId: profile.cottageId,
+                  createdBy: profile.id,
+                  name: name,
+                  label: category,
+                  mobileNumber: phone,
+                  email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
+                );
+                _refresh();
+              },
+              child: const Text('Save Contact'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -290,6 +325,35 @@ class _ContactsScreenState extends State<ContactsScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _CategoryChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
+          border: Border.all(color: selected ? CottageColors.primary : const Color(0xFFEEEEEE)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? Colors.white : const Color(0xFF404040),
+          ),
         ),
       ),
     );

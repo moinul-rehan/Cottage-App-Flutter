@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
 import '../../notices/data/notice.dart';
@@ -138,9 +137,10 @@ class _StickyNote extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       meta.label,
-                      style: GoogleFonts.lobster(
+                      style: const TextStyle(
+                        fontFamily: 'Lobster',
                         fontSize: 18,
-                        color: const Color(0xFF1E1E1E),
+                        color: Color(0xFF1E1E1E),
                       ),
                     ),
                   ],
@@ -156,9 +156,10 @@ class _StickyNote extends StatelessWidget {
                       notice.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lobster(
+                      style: const TextStyle(
+                        fontFamily: 'Lobster',
                         fontSize: 18,
-                        color: const Color(0xFF1E1E1E),
+                        color: Color(0xFF1E1E1E),
                       ),
                     ),
                     const SizedBox(height: 12),

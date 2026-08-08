@@ -1231,7 +1231,7 @@ class _MealCountTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface.background,
         border: Border.all(color: surface.border, width: 0.8),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(4), // Figma: 4px (not 8 -- smaller than the other card radii)
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1247,9 +1247,9 @@ class _MealCountTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8), // Figma: gap-8 inside this cell
           Divider(height: 1, color: surface.border, thickness: 0.8),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             entry.count.toStringAsFixed(entry.count % 1 == 0 ? 0 : 1),
             style: TextStyle(
@@ -1938,7 +1938,7 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                               color: Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 11), // Figma: gap-11
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -2013,7 +2013,7 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                               color: surface.foreground,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 11), // Figma: gap-11
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,

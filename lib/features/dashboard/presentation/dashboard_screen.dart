@@ -80,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return const SizedBox.shrink();
           }
           if (snapshot.hasError) {
             return Center(

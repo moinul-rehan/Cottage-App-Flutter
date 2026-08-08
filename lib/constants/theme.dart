@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+/// Bundled locally (assets/fonts/) rather than fetched via google_fonts at
+/// runtime, so the app never blocks on a font download over a slow or
+/// offline connection -- see pubspec.yaml's `fonts:` section.
+const String kAppFontFamily = 'Plus Jakarta Sans';
 
 /// Brand constants that stay fixed regardless of light/dark mode -- mirrors
 /// the CSS custom properties in the web app's src/app/globals.css :root
@@ -180,16 +184,14 @@ ThemeData buildCottageTheme(Brightness brightness) {
     error: CottageColors.destructive,
   );
 
-  final plusJakartaTextTheme = GoogleFonts.plusJakartaSansTextTheme(
-    ThemeData(brightness: brightness).textTheme,
-  );
+  final plusJakartaTextTheme = ThemeData(brightness: brightness).textTheme.apply(fontFamily: kAppFontFamily);
 
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: surface.background,
-    fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
+    fontFamily: kAppFontFamily,
     extensions: [surface],
     cardTheme: CardThemeData(
       color: surface.card,
@@ -215,7 +217,7 @@ ThemeData buildCottageTheme(Brightness brightness) {
         foregroundColor: CottageColors.primaryForeground,
         minimumSize: const Size.fromHeight(48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: kAppFontFamily, fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
     switchTheme: SwitchThemeData(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cottage/models/profile.dart';
 import '../data/member_service.dart';
 import '../../dashboard/data/dashboard_service.dart';
@@ -7,7 +8,9 @@ import '../../bazaar_duty/data/bazaar_duty_service.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
+import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
+import '../../dashboard/presentation/verified_badge.dart';
 
 /// Full Members screen -- Figma node 79:1109 ("Members"): every member of
 /// the cottage (active or not), with role, contact info, current/upcoming
@@ -34,10 +37,12 @@ class _MembersData {
   final Profile viewer;
   final List<Profile> members;
   final List<BazaarDuty> duties;
+  final String cottageName;
   const _MembersData({
     required this.viewer,
     required this.members,
     required this.duties,
+    required this.cottageName,
   });
 }
 
@@ -79,7 +84,10 @@ class _MembersScreenState extends State<MembersScreen>
     final duties = await _dutyService
         .getAllBazaarDuties(widget.cottageId)
         .timeout(const Duration(seconds: 15));
-    return _MembersData(viewer: viewer, members: members, duties: duties);
+    final cottageName = await _memberService
+        .getCottageName(widget.cottageId)
+        .timeout(const Duration(seconds: 15));
+    return _MembersData(viewer: viewer, members: members, duties: duties, cottageName: cottageName);
   }
 
   void _refresh() => setState(() => _future = _load());
@@ -188,6 +196,125 @@ class _MembersScreenState extends State<MembersScreen>
     }
   }
 
+  /// Figma node 85:1143 ("Invite Member - Drawer"). There's no `invites`
+  /// table (or any other join-an-existing-cottage mechanism) in the backend
+  /// yet -- `auth.signUp` always creates a brand-new cottage for the signer
+  /// -- so this can't create a real pending-member record. Instead it opens
+  /// the device's mail app with the invite details pre-filled; the admin
+  /// still has to add the person to the cottage themselves once they sign
+  /// up and reach out.
+  void _showInviteSheet(Profile viewer, String cottageName) {
+    final firstNameCtrl = TextEditingController();
+    final lastNameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final roomCtrl = TextEditingController();
+    String role = 'member';
+
+    showCottageSheet(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => CottageSheetContent(
+          title: 'Invite Member',
+          children: [
+            Text(
+              "They'll get an email to join this Cottage",
+              style: TextStyle(fontSize: 12, color: context.surface.mutedForeground),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: firstNameCtrl,
+                    decoration: const InputDecoration(labelText: 'First Name *', hintText: 'John'),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: lastNameCtrl,
+                    decoration: const InputDecoration(labelText: 'Last Name', hintText: 'Doe'),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(labelText: 'Email *', hintText: 'johndoe@gmail.com'),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: roomCtrl,
+              decoration: const InputDecoration(labelText: 'Room Label (optional)', hintText: 'e.g. Room 2'),
+            ),
+            const SizedBox(height: 12),
+            const Text('Role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _RoleChoice(
+                    label: 'Member',
+                    selected: role == 'member',
+                    onTap: () => setSheetState(() => role = 'member'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _RoleChoice(
+                    label: 'Super Admin',
+                    selected: role == 'super_admin',
+                    onTap: () => setSheetState(() => role = 'super_admin'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final firstName = firstNameCtrl.text.trim();
+                final email = emailCtrl.text.trim();
+                if (firstName.isEmpty || email.isEmpty) {
+                  showToast(sheetContext, 'First name and email are required.');
+                  return;
+                }
+                final lastName = lastNameCtrl.text.trim();
+                final room = roomCtrl.text.trim();
+                final roleLabel = role == 'super_admin' ? 'Super Admin' : 'Member';
+
+                final subject = "You're invited to join $cottageName on Cottage";
+                final body = StringBuffer()
+                  ..writeln('Hi $firstName${lastName.isEmpty ? '' : ' $lastName'},')
+                  ..writeln()
+                  ..writeln('${viewer.displayName} has invited you to join "$cottageName" on Cottage as a $roleLabel${room.isEmpty ? '' : ' ($room)'}.')
+                  ..writeln()
+                  ..writeln('Download the Cottage app, sign up, and let ${viewer.displayName} know once you have -- they\'ll add you to the cottage.');
+
+                final uri = Uri(
+                  scheme: 'mailto',
+                  path: email,
+                  query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body.toString())}',
+                );
+                Navigator.pop(sheetContext);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else if (mounted) {
+                  showToast(context, 'Could not open a mail app.');
+                }
+              },
+              child: const Text('Send Invite'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
@@ -291,10 +418,7 @@ class _MembersScreenState extends State<MembersScreen>
                               ),
                               const SizedBox(width: 12),
                               _InviteButton(
-                                onTap: () => showToast(
-                                  context,
-                                  'Invite links are coming in a future update',
-                                ),
+                                onTap: () => _showInviteSheet(data.viewer, data.cottageName),
                               ),
                             ],
                           ),
@@ -458,16 +582,24 @@ class _MemberCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isViewer
-                          ? '${member.displayName} (you)'
-                          : member.displayName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Color(0xFF17191E),
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            isViewer
+                                ? '${member.displayName} (you)'
+                                : member.displayName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Color(0xFF17191E),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        VerifiedBadge(isSuperAdmin: member.isSuperAdmin, defaultColor: const Color(0xFF17191E), size: 14),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -501,7 +633,9 @@ class _MemberCard extends StatelessWidget {
               ),
             ],
           ),
-          if (member.mobileNumber != null || member.email != null) ...[
+          if (member.mobileNumber != null ||
+              member.email != null ||
+              (member.address?.isNotEmpty ?? false)) ...[
             const SizedBox(height: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,10 +645,18 @@ class _MemberCard extends StatelessWidget {
                     icon: Icons.call_outlined,
                     text: member.mobileNumber!,
                   ),
-                  if (member.email != null) const SizedBox(height: 6),
+                  const SizedBox(height: 6),
                 ],
-                if (member.email != null)
+                if (member.email != null) ...[
                   _ContactRow(icon: Icons.mail_outline, text: member.email!),
+                  if (member.address?.isNotEmpty ?? false)
+                    const SizedBox(height: 6),
+                ],
+                if (member.address?.isNotEmpty ?? false)
+                  _ContactRow(
+                    icon: Icons.location_on_outlined,
+                    text: member.address!,
+                  ),
               ],
             ),
           ],
@@ -605,6 +747,37 @@ class _ContactRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RoleChoice extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _RoleChoice({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
+          border: Border.all(color: selected ? CottageColors.primary : const Color(0xFFEEEEEE)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : const Color(0xFF404040),
+          ),
+        ),
+      ),
     );
   }
 }

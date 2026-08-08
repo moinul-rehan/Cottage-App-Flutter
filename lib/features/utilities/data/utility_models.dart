@@ -7,6 +7,7 @@ class Expense {
   final String? category;
   final String expenseDate; // 'YYYY-MM-DD'
   final String? payerName;
+  final String? paymentSource;
 
   const Expense({
     required this.id,
@@ -16,6 +17,7 @@ class Expense {
     this.category,
     required this.expenseDate,
     this.payerName,
+    this.paymentSource,
   });
 
   factory Expense.fromMap(Map<String, dynamic> map) {
@@ -34,6 +36,7 @@ class Expense {
       category: map['category'] as String?,
       expenseDate: map['expense_date'] as String,
       payerName: displayName,
+      paymentSource: map['payment_source'] as String?,
     );
   }
 }
@@ -47,6 +50,8 @@ class UtilityDeposit {
   final double amount;
   final String sourceType;
   final String? memberName;
+  final String? avatarUrl;
+  final String? note;
   final DateTime? createdAt;
 
   const UtilityDeposit({
@@ -57,8 +62,12 @@ class UtilityDeposit {
     required this.amount,
     required this.sourceType,
     this.memberName,
+    this.avatarUrl,
+    this.note,
     this.createdAt,
   });
+
+  bool get isMemberDeposit => sourceType == 'member';
 
   factory UtilityDeposit.fromMap(Map<String, dynamic> map) {
     final profile = map['profiles'] as Map<String, dynamic>?;
@@ -76,6 +85,8 @@ class UtilityDeposit {
       amount: (map['amount'] as num).toDouble(),
       sourceType: map['source_type'] as String? ?? 'member',
       memberName: displayName,
+      avatarUrl: profile?['avatar_url'] as String?,
+      note: map['note'] as String?,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,

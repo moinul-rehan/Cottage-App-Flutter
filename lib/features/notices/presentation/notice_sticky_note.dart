@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cottage/constants/theme.dart';
 import '../data/notice.dart';
 import '../data/notice_types.dart';
@@ -74,7 +73,7 @@ class NoticeStickyNoteCard extends StatelessWidget {
           children: [
             Text(
               '${notice.dueAmount!.toStringAsFixed(2)} BDT',
-              style: GoogleFonts.lobster(fontSize: 17, color: meta.chipFg),
+              style: TextStyle(fontFamily: 'Lobster', fontSize: 17, color: meta.chipFg),
             ),
             if (notice.description.isNotEmpty) ...[
               const SizedBox(height: 6),
@@ -149,7 +148,8 @@ class NoticeStickyNoteCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         meta.label,
-                        style: GoogleFonts.lobster(
+                        style: TextStyle(
+                          fontFamily: 'Lobster',
                           fontSize: 15,
                           color: meta.chipFg,
                         ),
@@ -221,9 +221,10 @@ class NoticeStickyNoteCard extends StatelessWidget {
                       notice.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lobster(
+                      style: const TextStyle(
+                        fontFamily: 'Lobster',
                         fontSize: 17,
-                        color: const Color(0xFF1E1E1E),
+                        color: Color(0xFF1E1E1E),
                       ),
                     ),
                     const SizedBox(height: 10),

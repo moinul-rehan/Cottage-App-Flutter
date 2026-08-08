@@ -39,6 +39,7 @@ class UtilityService {
     required String expenseDate,
     String? description,
     String? category,
+    String? paymentSource,
   }) async {
     await _client.from('expenses').insert({
       'cottage_id': cottageId,
@@ -46,6 +47,7 @@ class UtilityService {
       'expense_date': expenseDate,
       if (description != null && description.isNotEmpty) 'description': description,
       if (category != null && category.isNotEmpty) 'category': category,
+      if (paymentSource != null && paymentSource.isNotEmpty) 'payment_source': paymentSource,
     });
   }
 
@@ -53,7 +55,7 @@ class UtilityService {
   Future<List<UtilityDeposit>> getDeposits(String cottageId, String monthKey) async {
     final rows = await _client
         .from('utility_deposits')
-        .select('*, profiles!utility_deposits_user_id_fkey(first_name, last_name)')
+        .select('*, profiles!utility_deposits_user_id_fkey(first_name, last_name, avatar_url)')
         .eq('cottage_id', cottageId)
         .eq('month_key', monthKey)
         .order('created_at', ascending: false);
@@ -63,19 +65,24 @@ class UtilityService {
         .toList();
   }
 
-  /// Add a member utility deposit.
+  /// Add a utility deposit -- 'member' (a roommate's personal contribution)
+  /// or any other [sourceType] (e.g. 'cottage', for money the cottage fund
+  /// itself put in) per the Figma "Cottage Deposit" tab.
   Future<void> addDeposit({
     required String cottageId,
     required String userId,
     required String monthKey,
     required double amount,
+    String sourceType = 'member',
+    String? note,
   }) async {
     await _client.from('utility_deposits').insert({
       'cottage_id': cottageId,
       'user_id': userId,
       'month_key': monthKey,
       'amount': amount,
-      'source_type': 'member',
+      'source_type': sourceType,
+      if (note != null && note.isNotEmpty) 'note': note,
     });
   }
 
