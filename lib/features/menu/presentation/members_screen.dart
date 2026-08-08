@@ -364,63 +364,77 @@ class _MembersScreenState extends State<MembersScreen>
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
-    return Scaffold(
-      backgroundColor: CottageColors.primary,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _DynamicMembersHeaderDelegate(
-                surface: surface,
-                safeAreaTop: MediaQuery.of(context).padding.top,
+    return FutureBuilder<_MembersData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                margin: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: surface.card,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Could not load members.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ];
-        },
-        body: Container(
-          color: surface.card,
-          child: FutureBuilder<_MembersData>(
-            future: _future,
-            builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 40,
-                              color: CottageColors.destructive,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Could not load members.\n${snapshot.error}',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _refresh,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+          );
+        }
 
-                    final data = snapshot.data!;
-                    if (data.members.isEmpty) {
-                      return const EmptyState(
-                        icon: Icons.people_rounded,
-                        title: 'No members found',
-                        subtitle: 'There are no members in this cottage yet.',
-                      );
-                    }
+        final data = snapshot.data!;
 
-                    return RefreshIndicator(
+        return Scaffold(
+          backgroundColor: CottageColors.primary,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicMembersHeaderDelegate(
+                    surface: surface,
+                    safeAreaTop: MediaQuery.of(context).padding.top,
+                    onInviteTap: () => _showInviteSheet(data.viewer, data.cottageName),
+                  ),
+                ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: data.members.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.people_rounded,
+                      title: 'No members found',
+                      subtitle: 'There are no members in this cottage yet.',
+                    )
+                  : RefreshIndicator(
                       onRefresh: () async => _refresh(),
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
@@ -430,25 +444,6 @@ class _MembersScreenState extends State<MembersScreen>
                           96,
                         ),
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Everyone sharing this Cottage and their role.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF303030),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              _InviteButton(
-                                onTap: () => _showInviteSheet(data.viewer, data.cottageName),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
                           for (final member in data.members)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
@@ -475,11 +470,11 @@ class _MembersScreenState extends State<MembersScreen>
                             ),
                         ],
                       ),
-                    );
-                  },
-                ),
-        ),
-      ),
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -487,17 +482,19 @@ class _MembersScreenState extends State<MembersScreen>
 class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final CottageSurface surface;
   final double safeAreaTop;
+  final VoidCallback onInviteTap;
 
   _DynamicMembersHeaderDelegate({
     required this.surface,
     required this.safeAreaTop,
+    required this.onInviteTap,
   });
 
   @override
-  double get minExtent => safeAreaTop + 56.0;
+  double get minExtent => safeAreaTop + 90.0;
 
   @override
-  double get maxExtent => safeAreaTop + 104.0;
+  double get maxExtent => safeAreaTop + 180.0;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
@@ -506,15 +503,16 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Background: Orange top, White bottom
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: maxExtent - (shrinkOffset * 1.5).clamp(0, maxExtent),
+          height: safeAreaTop + 56 - (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
           child: Container(color: CottageColors.primary),
         ),
         Positioned(
-          top: maxExtent * (1 - progress),
+          top: (safeAreaTop + 56) * (1 - progress),
           left: 0,
           right: 0,
           bottom: 0,
@@ -522,13 +520,14 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
             decoration: BoxDecoration(
               color: surface.card,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(24 * (1 - progress)),
-                topRight: Radius.circular(24 * (1 - progress)),
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
               ),
             ),
           ),
         ),
 
+        // Expanded Content (Fades out)
         if (progress < 1.0)
           Positioned(
             top: 0,
@@ -539,26 +538,54 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
               opacity: 1.0 - progress,
               child: IgnorePointer(
                 ignoring: progress > 0.5,
-                child: Container(
-                  height: safeAreaTop + 56,
-                  padding: EdgeInsets.only(
-                    top: safeAreaTop + 8,
-                    left: context.responsivePadding,
-                    right: context.responsivePadding,
-                  ),
-                  child: const Text(
-                    'Members',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Orange Header Content
+                    Container(
+                      height: safeAreaTop + 56,
+                      padding: EdgeInsets.only(
+                        top: safeAreaTop,
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                      ),
+                      child: const Row(
+                        children: [
+                          Text(
+                            'Members',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    // White Card Content (Details)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                        top: 16,
+                      ),
+                      child: const Text(
+                        "Everyone sharing this Cottage and their role.",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14,
+                          color: Color(0xFF303030),
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
 
+        // Collapsed Content (Fades in)
         if (progress > 0.0)
           Positioned(
             top: 0,
@@ -575,22 +602,38 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
                     left: context.responsivePadding,
                     right: context.responsivePadding,
                   ),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Members',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: surface.foreground,
-                        ),
-                      ),
-                    ],
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Members',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: surface.foreground,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+          
+        // Common bottom elements (Invite Button)
+        Positioned(
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          bottom: 8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _InviteButton(onTap: onInviteTap),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -607,38 +650,32 @@ class _InviteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+    final surface = context.surface;
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(
+        Icons.add,
+        color: surface.foreground,
+        size: 18,
+      ),
+      label: Text(
+        'Invite',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: surface.foreground,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: surface.border),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(1000),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 1,
-              offset: const Offset(0, 1),
-            ),
-          ],
         ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 20, color: Color(0xFF404040)),
-            SizedBox(width: 8),
-            Text(
-              'Invite',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF404040),
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
         ),
+        minimumSize: Size.zero,
       ),
     );
   }
