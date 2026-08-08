@@ -20,6 +20,8 @@ class Profile {
   /// so a missing value should never be misread as inactive.
   final bool isActive;
 
+  final List<String> permissions;
+
   const Profile({
     required this.id,
     required this.cottageId,
@@ -31,6 +33,7 @@ class Profile {
     this.address,
     this.role = 'member',
     this.isActive = true,
+    this.permissions = const [],
   });
 
   bool get isSuperAdmin => role == 'super_admin';
@@ -47,6 +50,7 @@ class Profile {
       address: map['address'] as String?,
       role: map['role'] as String? ?? 'member',
       isActive: map['is_active'] as bool? ?? true,
+      permissions: (map['permissions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 

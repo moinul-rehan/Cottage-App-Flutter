@@ -91,7 +91,11 @@ class _MembersScreenState extends State<MembersScreen>
     return _MembersData(viewer: viewer, members: members, duties: duties, cottageName: cottageName);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   String _iso(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -181,6 +185,61 @@ class _MembersScreenState extends State<MembersScreen>
       await _memberService.setActive(member.id, false);
       _refresh();
     }
+  }
+
+  Future<void> _showPermissionsSheet(Profile member) async {
+    final permissions = List<String>.from(member.permissions);
+
+    await showCottageSheet(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          Widget buildToggle(String title, String key) {
+            final hasPerm = permissions.contains(key);
+            return CheckboxListTile(
+              title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              value: hasPerm,
+              onChanged: (val) {
+                setSheetState(() {
+                  if (val == true) {
+                    permissions.add(key);
+                  } else {
+                    permissions.remove(key);
+                  }
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+              activeColor: CottageColors.primary,
+              controlAffinity: ListTileControlAffinity.leading,
+            );
+          }
+
+          return CottageSheetContent(
+            title: '${member.firstName}\'s Permissions',
+            children: [
+              const Text(
+                'Select which actions this member is allowed to perform.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF7A818D)),
+              ),
+              const SizedBox(height: 8),
+              buildToggle('Add Utility Expenses', 'add_utility_expenses'),
+              buildToggle('Add meal Cost', 'add_meal_cost'),
+              buildToggle('Add Meal', 'add_meal'),
+              buildToggle('Add meal deposit', 'add_meal_deposit'),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(sheetContext);
+                  await _memberService.updatePermissions(member.id, permissions);
+                  _refresh();
+                },
+                child: const Text('Save Permissions'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   /// Figma node 85:1143 ("Invite Member - Drawer"). There's no `invites`
@@ -307,43 +366,23 @@ class _MembersScreenState extends State<MembersScreen>
     final surface = context.surface;
     return Scaffold(
       backgroundColor: CottageColors.primary,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.responsivePadding,
-                8,
-                context.responsivePadding,
-                16,
-              ),
-              child: const Row(
-                children: [
-                  Text(
-                    'Members',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _DynamicMembersHeaderDelegate(
+                surface: surface,
+                safeAreaTop: MediaQuery.of(context).padding.top,
               ),
             ),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: surface.card,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                ),
-                child: FutureBuilder<_MembersData>(
-                  future: _future,
-                  builder: (context, snapshot) {
+          ];
+        },
+        body: Container(
+          color: surface.card,
+          child: FutureBuilder<_MembersData>(
+            future: _future,
+            builder: (context, snapshot) {
                     if (snapshot.connectionState != ConnectionState.done) {
                       return const Center(child: CircularProgressIndicator());
                     }
@@ -431,10 +470,7 @@ class _MembersScreenState extends State<MembersScreen>
                                   context,
                                   'Removing members is coming in a future update',
                                 ),
-                                onPermissions: () => showToast(
-                                  context,
-                                  'Granular permissions are coming in a future update',
-                                ),
+                                onPermissions: () => _showPermissionsSheet(member),
                               ),
                             ),
                         ],
@@ -442,12 +478,126 @@ class _MembersScreenState extends State<MembersScreen>
                     );
                   },
                 ),
-              ),
-            ),
-          ],
         ),
       ),
     );
+  }
+}
+
+class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final double safeAreaTop;
+
+  _DynamicMembersHeaderDelegate({
+    required this.surface,
+    required this.safeAreaTop,
+  });
+
+  @override
+  double get minExtent => safeAreaTop + 56.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 104.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: maxExtent - (shrinkOffset * 1.5).clamp(0, maxExtent),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: maxExtent * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24 * (1 - progress)),
+                topRight: Radius.circular(24 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: Container(
+                  height: safeAreaTop + 56,
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  child: const Text(
+                    'Members',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Members',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: surface.foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicMembersHeaderDelegate oldDelegate) {
+    return true;
   }
 }
 

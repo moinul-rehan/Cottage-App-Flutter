@@ -168,6 +168,7 @@ class _NoticesScreenState extends State<NoticesScreen>
     DateTime? customExpiresAt;
     DateTime? dueDate;
     bool pinToDashboard = false;
+    PinDuration selectedPinDuration = PinDuration.untilManual;
     bool postAsCottage = false;
 
     final members = membersById.values.toList();
@@ -179,6 +180,17 @@ class _NoticesScreenState extends State<NoticesScreen>
           DateTime resolvedPublishAt() => publishNow ? DateTime.now() : (scheduledPublishAt ?? DateTime.now());
           DateTime resolvedExpiresAt() =>
               expireIn7Days ? resolvedPublishAt().add(const Duration(days: 7)) : (customExpiresAt ?? resolvedPublishAt().add(const Duration(days: 7)));
+
+          String pinDurationString(PinDuration d) {
+            switch (d) {
+              case PinDuration.untilManual: return 'Pin until manually removed';
+              case PinDuration.oneDay: return 'Pin for 1 day';
+              case PinDuration.threeDay: return 'Pin for 3 days';
+              case PinDuration.untilDate: return 'Pin until specific date';
+              case PinDuration.untilExpires: return 'Pin until notice expires';
+              case PinDuration.none: return '';
+            }
+          }
 
           Future<void> pickPublishDate() async {
             final now = DateTime.now();
@@ -223,7 +235,6 @@ class _NoticesScreenState extends State<NoticesScreen>
                   for (int row = 0; row < 2; row++) ...[
                     if (row > 0) const SizedBox(height: 8),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (int col = 0; col < 3; col++) ...[
                           if (col > 0) const SizedBox(width: 8),
@@ -414,6 +425,79 @@ class _NoticesScreenState extends State<NoticesScreen>
                       value: pinToDashboard,
                       onChanged: (v) => setSheetState(() => pinToDashboard = v),
                     ),
+                    if (pinToDashboard) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                        child: PopupMenuButton<PinDuration>(
+                          onSelected: (val) => setSheetState(() => selectedPinDuration = val),
+                          offset: const Offset(0, 48),
+                          color: Colors.white,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Color(0xFFEEEEEE), width: 1),
+                          ),
+                          itemBuilder: (ctx) => [
+                            PinDuration.untilManual,
+                            PinDuration.oneDay,
+                            PinDuration.threeDay,
+                            PinDuration.untilDate,
+                            PinDuration.untilExpires,
+                          ].map((d) {
+                            final isSelected = d == selectedPinDuration;
+                            return PopupMenuItem<PinDuration>(
+                              value: d,
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFFBE9E2) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      pinDurationString(d),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                                        color: isSelected ? CottageColors.primary : const Color(0xFF2A2A2A),
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check, size: 16, color: CottageColors.primary),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAFAFA),
+                              border: Border.all(color: const Color(0xFFEEEEEE), width: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  pinDurationString(selectedPinDuration),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF2A2A2A),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                                const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF707070)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     Container(height: 0.8, color: _NoticeFormColors.border),
                     _NoticeOptionRow(
                       title: 'Post as "Cottage"',
@@ -447,7 +531,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                     visibility: visibility,
                     targetMemberIds: targetMemberIds.toList(),
                     isPinned: pinToDashboard,
-                    pinDuration: pinToDashboard ? PinDuration.untilManual : PinDuration.none,
+                    pinDuration: pinToDashboard ? selectedPinDuration : PinDuration.none,
                     isAnonymous: postAsCottage,
                     publishAt: publishNow ? null : scheduledPublishAt,
                     expiresAt: expireIn7Days ? null : customExpiresAt,

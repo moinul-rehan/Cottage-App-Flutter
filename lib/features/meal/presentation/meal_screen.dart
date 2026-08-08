@@ -261,7 +261,7 @@ class _MealScreenState extends State<MealScreen>
                   count: counts[member.id]!,
                   onChanged: (v) => setSheetState(() => counts[member.id] = v),
                 ),
-                const SizedBox(height: 16),
+                if (member != data.members.last) const SizedBox(height: 8) else const SizedBox(height: 16),
               ],
               _DrawerSaveButton(
                 label: 'Save Meal Count',
@@ -1201,7 +1201,6 @@ class _DailyMealsTab extends StatelessWidget {
                 for (var i = 0; i < entries.length; i += 3) ...[
                   if (i > 0) const SizedBox(height: 4),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (var j = i; j < i + 3 && j < entries.length; j++) ...[
                         if (j > i) const SizedBox(width: 4),

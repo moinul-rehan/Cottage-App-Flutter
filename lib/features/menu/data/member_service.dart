@@ -25,7 +25,7 @@ class MemberService {
     final rows = await _client
         .from('profiles')
         .select(
-          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active',
+          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, permissions',
         )
         .eq('cottage_id', cottageId)
         .order('is_active', ascending: false)
@@ -42,6 +42,14 @@ class MemberService {
     await _client
         .from('profiles')
         .update({'is_active': active})
+        .eq('id', userId);
+  }
+
+  /// Update the granular permissions of a member.
+  Future<void> updatePermissions(String userId, List<String> permissions) async {
+    await _client
+        .from('profiles')
+        .update({'permissions': permissions})
         .eq('id', userId);
   }
 
