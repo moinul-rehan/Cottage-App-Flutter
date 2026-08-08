@@ -22,6 +22,9 @@ class _UtilityColors {
   static const darkText = Color(0xFF404040);
   static const placeholder = Color(0xFFAAAAAA);
   static const highlightBg = Color(0xFFFDEFEC);
+  static const headingText = Color(0xFF17191E);
+  static const requiredMark = Color(0xFFCC4F4F);
+  static const saveButton = Color(0xFFD1593B);
 }
 
 /// Full utility screen -- mirrors the Figma "Utility Details" spec (node
@@ -99,95 +102,78 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
 
   void _refresh() => setState(() => _future = _load());
 
+  static String _isoDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static String _drawerDate(DateTime d) {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${d.day} ${months[d.month - 1]}, ${d.year}';
+  }
+
+  /// Figma node 77:1052 ("Add Expense - Drawer"): free-text Category and
+  /// Payment Source (not dropdowns -- the design just shows placeholder
+  /// examples), Date via a tap-to-pick field styled like the others.
   void _showAddExpense(_UtilityData data) {
-    final amountCtrl = TextEditingController();
+    final categoryCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    String? category;
-    String paymentSource = 'Cottage Balance';
-    final now = DateTime.now();
-    String selectedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final paymentSourceCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    DateTime selectedDate = DateTime.now();
 
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CottageSheetContent(
+        builder: (ctx, setSheetState) => _UtilityDrawer(
+          icon: Icons.payments_outlined,
           title: 'Add Expense',
           children: [
-            TextField(
-              controller: amountCtrl,
-              decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descCtrl,
-              decoration: const InputDecoration(labelText: 'Description'),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: category,
-              decoration: const InputDecoration(labelText: 'Category'),
-              items: const [
-                DropdownMenuItem(value: 'electricity', child: Text('Electricity')),
-                DropdownMenuItem(value: 'gas', child: Text('Gas')),
-                DropdownMenuItem(value: 'water', child: Text('Water')),
-                DropdownMenuItem(value: 'internet', child: Text('Internet')),
-                DropdownMenuItem(value: 'house_rent', child: Text('House Rent')),
-                DropdownMenuItem(value: 'maintenance', child: Text('Maintenance')),
-                DropdownMenuItem(value: 'other', child: Text('Other')),
-              ],
-              onChanged: (v) => setSheetState(() => category = v),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: paymentSource,
-              decoration: const InputDecoration(labelText: 'Payment Source'),
-              items: const [
-                DropdownMenuItem(value: 'Cottage Balance', child: Text('Cottage Balance')),
-                DropdownMenuItem(value: 'Member Reimbursement', child: Text('Member Reimbursement')),
-                DropdownMenuItem(value: 'Other', child: Text('Other')),
-              ],
-              onChanged: (v) => setSheetState(() => paymentSource = v ?? paymentSource),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: now,
-                  firstDate: DateTime(now.year - 1),
-                  lastDate: now,
-                );
-                if (picked != null) {
-                  setSheetState(() {
-                    selectedDate =
-                        '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                  });
-                }
-              },
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Date'),
-                child: Text(selectedDate),
+            _DrawerField(
+              label: 'Date',
+              child: _DrawerTapField(
+                value: _drawerDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(selectedDate.year - 1),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setSheetState(() => selectedDate = picked);
+                },
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
+            _DrawerField(
+              label: 'Category',
+              child: _DrawerTextField(controller: categoryCtrl, hint: 'e.g. Electricity, Internet, Gas'),
+            ),
+            _DrawerField(
+              label: 'Description',
+              child: _DrawerTextField(controller: descCtrl, hint: 'July electricity bill payment'),
+            ),
+            _DrawerField(
+              label: 'Payment Source',
+              child: _DrawerTextField(controller: paymentSourceCtrl, hint: 'Cottage Balance'),
+            ),
+            _DrawerField(label: 'Total Amount', child: _DrawerAmountField(controller: amountCtrl)),
+            _DrawerSaveButton(
+              label: 'Save Expense',
+              onTap: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (amount <= 0) return;
-                Navigator.pop(context);
+                if (amount <= 0 || categoryCtrl.text.trim().isEmpty || descCtrl.text.trim().isEmpty) {
+                  showToast(ctx, 'Please fill in all required fields.');
+                  return;
+                }
+                Navigator.pop(ctx);
                 await _utilityService.addExpense(
                   cottageId: data.profile.cottageId,
                   amount: amount,
-                  expenseDate: selectedDate,
+                  expenseDate: _isoDate(selectedDate),
                   description: descCtrl.text.trim(),
-                  category: category,
-                  paymentSource: paymentSource,
+                  category: categoryCtrl.text.trim(),
+                  paymentSource: paymentSourceCtrl.text.trim().isEmpty ? 'Cottage Balance' : paymentSourceCtrl.text.trim(),
                 );
                 _refresh();
               },
-              child: const Text('Add Expense'),
             ),
           ],
         ),
@@ -195,61 +181,95 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
     );
   }
 
-  /// [sourceType] 'member' shows a member picker (Figma "Member Deposit"
-  /// tab); anything else (e.g. 'cottage') skips it, matching the "Cottage
-  /// Deposit" tab's no-avatar card.
+  /// Figma nodes 77:1154 ("Add Member Deposit") / 77:1255 ("Add Cottage
+  /// Deposit"): the member picker only appears for [sourceType] 'member'.
   void _showAddDeposit(_UtilityData data, {required String sourceType}) {
+    final descCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    String? selectedUserId = sourceType == 'member' ? data.profile.id : null;
+    DateTime selectedDate = DateTime.now();
+    Profile? selectedMember = sourceType == 'member' ? data.profile : null;
 
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CottageSheetContent(
+        builder: (ctx, setSheetState) => _UtilityDrawer(
+          icon: Icons.account_balance_wallet_outlined,
           title: sourceType == 'member' ? 'Add Member Deposit' : 'Add Cottage Deposit',
           children: [
-            if (sourceType == 'member') ...[
-              DropdownButtonFormField<String>(
-                initialValue: selectedUserId,
-                decoration: const InputDecoration(labelText: 'Member'),
-                items: data.members
-                    .map((m) => DropdownMenuItem(value: m.id, child: Text(m.displayName)))
-                    .toList(),
-                onChanged: (v) => setSheetState(() => selectedUserId = v),
+            if (sourceType == 'member')
+              _DrawerField(
+                label: 'Member',
+                child: _DrawerTapField(
+                  value: selectedMember?.displayName ?? 'Select member',
+                  isPlaceholder: selectedMember == null,
+                  onTap: () async {
+                    final picked = await _pickMember(ctx, data.members);
+                    if (picked != null) setSheetState(() => selectedMember = picked);
+                  },
+                ),
               ),
-              const SizedBox(height: 12),
-            ],
-            TextField(
-              controller: amountCtrl,
-              decoration: const InputDecoration(labelText: 'Amount (tk)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            _DrawerField(
+              label: 'Date',
+              child: _DrawerTapField(
+                value: _drawerDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(selectedDate.year - 1),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setSheetState(() => selectedDate = picked);
+                },
+              ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteCtrl,
-              decoration: const InputDecoration(labelText: 'Note'),
-              textCapitalization: TextCapitalization.sentences,
+            _DrawerField(
+              label: 'Description',
+              child: _DrawerTextField(
+                controller: descCtrl,
+                hint: sourceType == 'member' ? 'Cash for July utility bill' : 'Prepaid by cottage fund for July electricity',
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
+            _DrawerField(label: 'Total Amount', child: _DrawerAmountField(controller: amountCtrl)),
+            _DrawerSaveButton(
+              label: 'Save Deposit',
+              onTap: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
-                final userId = selectedUserId ?? data.profile.id;
-                if (amount <= 0) return;
-                Navigator.pop(context);
+                if (amount <= 0 || descCtrl.text.trim().isEmpty || (sourceType == 'member' && selectedMember == null)) {
+                  showToast(ctx, 'Please fill in all required fields.');
+                  return;
+                }
+                Navigator.pop(ctx);
                 await _utilityService.addDeposit(
                   cottageId: data.profile.cottageId,
-                  userId: userId,
+                  userId: (selectedMember ?? data.profile).id,
                   monthKey: data.monthKey,
                   amount: amount,
                   sourceType: sourceType,
-                  note: noteCtrl.text.trim(),
+                  note: descCtrl.text.trim(),
                 );
                 _refresh();
               },
-              child: const Text('Add Deposit'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Profile?> _pickMember(BuildContext context, List<Profile> members) {
+    return showModalBottomSheet<Profile>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final m in members)
+              ListTile(
+                title: Text(m.displayName),
+                onTap: () => Navigator.pop(ctx, m),
+              ),
           ],
         ),
       ),
@@ -492,6 +512,187 @@ class _UtilityData {
     required this.expenses,
     required this.deposits,
   });
+}
+
+// --- Add Expense/Deposit drawers (Figma "Section 5": nodes 77:1052,
+// 77:1154, 77:1255) -- icon+title+close header, gap-16 between fields,
+// each field a gap-6 label(+red asterisk)/box pair, fafafa/eee/radius-10
+// boxes, and a #D1593B pill save button. ---
+
+class _UtilityDrawer extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  const _UtilityDrawer({required this.icon, required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: _UtilityColors.headingText),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _UtilityColors.headingText),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: _UtilityColors.fieldBg, borderRadius: BorderRadius.circular(14)),
+                  child: const Icon(Icons.close, size: 16, color: _UtilityColors.headingText),
+                ),
+              ),
+            ],
+          ),
+          for (final child in children) ...[
+            const SizedBox(height: 16),
+            child,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DrawerField extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const _DrawerField({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText)),
+            const SizedBox(width: 2),
+            const Text('*', style: TextStyle(fontSize: 13, color: _UtilityColors.requiredMark)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: _UtilityColors.fieldBg,
+            border: Border.all(color: _UtilityColors.border),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+
+  const _DrawerTextField({required this.controller, required this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      textCapitalization: TextCapitalization.sentences,
+      style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 13, color: _UtilityColors.placeholder),
+        filled: false,
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.zero,
+      ),
+    );
+  }
+}
+
+/// Read-only, tap-to-pick field (Date / Member) styled like the text
+/// fields -- Figma shows these as plain text-style inputs too.
+class _DrawerTapField extends StatelessWidget {
+  final String value;
+  final bool isPlaceholder;
+  final VoidCallback onTap;
+
+  const _DrawerTapField({required this.value, this.isPlaceholder = false, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Text(
+        value,
+        style: TextStyle(fontSize: 13, color: isPlaceholder ? _UtilityColors.placeholder : _UtilityColors.darkText),
+      ),
+    );
+  }
+}
+
+class _DrawerAmountField extends StatelessWidget {
+  final TextEditingController controller;
+  const _DrawerAmountField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text('৳', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _UtilityColors.placeholder)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+            decoration: const InputDecoration(
+              hintText: '0.00',
+              hintStyle: TextStyle(fontSize: 13, color: _UtilityColors.placeholder),
+              filled: false,
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DrawerSaveButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _DrawerSaveButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: _UtilityColors.saveButton, borderRadius: BorderRadius.circular(999)),
+        child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+      ),
+    );
+  }
 }
 
 String _formatCardDate(String isoDate) {
