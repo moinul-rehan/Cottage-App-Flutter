@@ -593,7 +593,7 @@ class _MembersScreenState extends State<MembersScreen>
                           final room = roomCtrl.text.trim();
 
                           setSheetState(() => isChecking = true);
-                          final sentViaBackend =
+                          final res =
                               await _memberService.sendBackendInvite(
                             cottageId: viewer.cottageId,
                             email: email,
@@ -607,7 +607,7 @@ class _MembersScreenState extends State<MembersScreen>
                             Navigator.pop(sheetContext);
                           }
 
-                          if (sentViaBackend) {
+                          if (res.isSuccess) {
                             if (mounted) {
                               showToast(
                                 context,
@@ -615,34 +615,10 @@ class _MembersScreenState extends State<MembersScreen>
                               );
                             }
                           } else {
-                            final subject =
-                                "You're invited to join $cottageName on Cottage";
-                            final body = StringBuffer()
-                              ..writeln(
-                                'Hi $firstName${lastName.isEmpty ? '' : ' $lastName'},',
-                              )
-                              ..writeln()
-                              ..writeln(
-                                '${viewer.displayName} has invited you to join "$cottageName" on Cottage as a ${role == 'super_admin' ? 'Super Admin' : 'Member'}${room.isEmpty ? '' : ' ($room)'}.',
-                              )
-                              ..writeln()
-                              ..writeln(
-                                'Download the Cottage app, sign up, and you\'ll be automatically added to the cottage.',
-                              );
-
-                            final uri = Uri(
-                              scheme: 'mailto',
-                              path: email,
-                              query:
-                                  'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body.toString())}',
-                            );
-
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri);
-                            } else if (mounted) {
+                            if (mounted) {
                               showToast(
                                 context,
-                                'Backend invite function not configured and could not open mail app.',
+                                res.errorMessage ?? 'Could not send invite.',
                               );
                             }
                           }
