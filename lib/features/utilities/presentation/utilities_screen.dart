@@ -160,8 +160,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                     firstDate: DateTime(selectedDate.year - 1),
                     lastDate: DateTime.now(),
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedDate = picked);
+                  }
                 },
               ),
             ),
@@ -245,8 +246,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                   isPlaceholder: selectedMember == null,
                   onTap: () async {
                     final picked = await _pickMember(ctx, data.members);
-                    if (picked != null)
+                    if (picked != null) {
                       setSheetState(() => selectedMember = picked);
+                    }
                   },
                 ),
               ),
@@ -261,8 +263,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                     firstDate: DateTime(selectedDate.year - 1),
                     lastDate: DateTime.now(),
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedDate = picked);
+                  }
                 },
               ),
             ),

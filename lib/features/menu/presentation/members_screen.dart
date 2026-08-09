@@ -6,7 +6,6 @@ import '../../dashboard/data/dashboard_service.dart';
 import '../../bazaar_duty/data/bazaar_duty_models.dart';
 import '../../bazaar_duty/data/bazaar_duty_service.dart';
 import 'package:cottage/constants/theme.dart';
-import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/common_widgets/cottage_loader.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
