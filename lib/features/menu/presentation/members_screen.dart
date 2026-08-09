@@ -644,26 +644,6 @@ class _MembersScreenState extends State<MembersScreen>
       ),
     );
   }
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD1593B),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Send Invite',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
