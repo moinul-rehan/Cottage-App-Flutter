@@ -11,6 +11,7 @@ import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/confirm_modal.dart';
+import 'package:cottage/common_widgets/password_confirm_dialog.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../dashboard/presentation/verified_badge.dart';
 
@@ -185,20 +186,62 @@ class _MembersScreenState extends State<MembersScreen>
     _refresh();
   }
 
-  Future<void> _confirmDeactivate(Profile member) async {
+  /// Toggles between Deactivate and Activate depending on the member's
+  /// current state -- deactivating is a "soft pause" (excluded from meal
+  /// forms/duty pickers/cost splits, but still shows in the roster and can
+  /// still sign in), so only deactivating gets the destructive red styling.
+  Future<void> _confirmToggleActive(Profile member) async {
+    final activating = !member.isActive;
     final confirmed = await showConfirmModal(
       context,
-      icon: Icons.person_off_outlined,
-      title: 'Deactivate member?',
-      message:
-          '${member.displayName} will no longer show as an active member of this cottage.',
-      confirmLabel: 'Deactivate',
-      destructive: true,
+      icon: activating ? Icons.person_outline : Icons.person_off_outlined,
+      title: activating ? 'Activate member?' : 'Deactivate member?',
+      message: activating
+          ? '${member.displayName} will show as an active member again.'
+          : '${member.displayName} will no longer show as an active member of this cottage.',
+      confirmLabel: activating ? 'Activate' : 'Deactivate',
+      destructive: !activating,
     );
     if (confirmed) {
-      await _memberService.setActive(member.id, false);
+      await _memberService.setActive(member.id, activating);
       _refresh();
     }
+  }
+
+  /// Two-step removal: only reachable once a member is already deactivated
+  /// (enforced both by the UI -- see [_MemberCard] -- and by
+  /// [MemberService.removeMember]). Requires the acting admin's own
+  /// password before proceeding, same as the Months screen's destructive
+  /// actions.
+  Future<void> _confirmRemove(Profile viewer, Profile member) async {
+    final proceed = await showConfirmModal(
+      context,
+      icon: Icons.person_remove_outlined,
+      title: 'Remove ${member.displayName}?',
+      message:
+          "This hides them from the member list and stops them appearing anywhere new. Their past expenses, meals, and deposits stay fully intact and attributed to them. This can't be undone from here.",
+      confirmLabel: 'Continue',
+      destructive: true,
+    );
+    if (!proceed || !mounted) return;
+
+    final verified = await showPasswordConfirmDialog(
+      context,
+      title: 'Confirm removal',
+      message: 'Enter your password to remove ${member.displayName}.',
+      confirmLabel: 'Remove',
+      destructive: true,
+    );
+    if (!verified) return;
+
+    try {
+      await _memberService.removeMember(viewer: viewer, target: member);
+    } catch (e) {
+      if (mounted) showToast(context, '$e');
+      return;
+    }
+    if (mounted) showToast(context, '${member.displayName} removed.');
+    _refresh();
   }
 
   Future<void> _showPermissionsSheet(Profile member) async {
@@ -555,11 +598,10 @@ class _MembersScreenState extends State<MembersScreen>
                                 formatRange: _formatRange,
                                 onAssignDuty: () => _assignDuty(data, member),
                                 onRemoveDuty: (duty) => _removeDuty(duty),
-                                onDeactivate: () => _confirmDeactivate(member),
-                                onRemove: () => showToast(
-                                  context,
-                                  'Removing members is coming in a future update',
-                                ),
+                                onToggleActive: () =>
+                                    _confirmToggleActive(member),
+                                onRemove: () =>
+                                    _confirmRemove(data.viewer, member),
                                 onPermissions: () =>
                                     _showPermissionsSheet(member),
                               ),
@@ -801,7 +843,7 @@ class _MemberCard extends StatelessWidget {
   final String Function(String, String) formatRange;
   final VoidCallback onAssignDuty;
   final ValueChanged<BazaarDuty> onRemoveDuty;
-  final VoidCallback onDeactivate;
+  final VoidCallback onToggleActive;
   final VoidCallback onRemove;
   final VoidCallback onPermissions;
 
@@ -814,7 +856,7 @@ class _MemberCard extends StatelessWidget {
     required this.formatRange,
     required this.onAssignDuty,
     required this.onRemoveDuty,
-    required this.onDeactivate,
+    required this.onToggleActive,
     required this.onRemove,
     required this.onPermissions,
   });
@@ -1003,24 +1045,59 @@ class _MemberCard extends StatelessWidget {
                 if (canAssignDuty)
                   _ActionPill(label: 'Assign Duty', onTap: onAssignDuty),
                 const Spacer(),
-                if (canManage)
+                // A super admin target can only ever be toggled active/
+                // inactive -- never removed, regardless of state. A
+                // general member shows a single Deactivate while active;
+                // once inactive, both Activate and Remove appear side by
+                // side (removal is only reachable via that inactive state,
+                // matching MemberService.removeMember's own guardrail).
+                if (canManage && member.isSuperAdmin)
+                  _ToggleActiveLabel(
+                    isActive: member.isActive,
+                    onTap: onToggleActive,
+                  )
+                else if (canManage && member.isActive)
+                  _ToggleActiveLabel(isActive: true, onTap: onToggleActive)
+                else if (canManage) ...[
+                  _ToggleActiveLabel(isActive: false, onTap: onToggleActive),
+                  const SizedBox(width: 16),
                   GestureDetector(
-                    onTap: member.isActive ? onDeactivate : onRemove,
-                    child: Text(
-                      member.isActive ? 'Deactivate' : 'Remove',
+                    onTap: onRemove,
+                    child: const Text(
+                      'Remove',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: member.isActive
-                            ? const Color(0xFF7A818D)
-                            : CottageColors.destructive,
+                        color: CottageColors.destructive,
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _ToggleActiveLabel extends StatelessWidget {
+  final bool isActive;
+  final VoidCallback onTap;
+  const _ToggleActiveLabel({required this.isActive, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        isActive ? 'Deactivate' : 'Activate',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          color: isActive ? const Color(0xFF7A818D) : CottageColors.primary,
+        ),
       ),
     );
   }

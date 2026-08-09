@@ -5,13 +5,18 @@ import 'package:cottage/helpers/supabase_service.dart';
 class MemberService {
   final _client = SupabaseService.client;
 
-  /// Fetch all active members for the given cottage.
+  /// Fetch all active members for the given cottage -- excludes soft-removed
+  /// profiles (`removed_at is not null`) the same way every member query
+  /// here does, so a removed member can never resurface in a meal count
+  /// form, bazaar duty picker, or cost split just because they're still
+  /// technically "active" from before they were removed.
   Future<List<Profile>> getActiveMembers(String cottageId) async {
     final rows = await _client
         .from('profiles')
         .select('id, cottage_id, first_name, last_name, email, avatar_url')
         .eq('cottage_id', cottageId)
         .eq('is_active', true)
+        .isFilter('removed_at', null)
         .order('first_name');
 
     return (rows as List)
@@ -20,16 +25,21 @@ class MemberService {
   }
 
   static const _allMembersColumns =
-      'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, '
+      'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, room_label, hometown, '
+      'role, is_active, removed_at, '
       'can_add_expenses, can_add_bazaar, can_add_meals, can_add_deposit, can_add_notice';
 
-  /// Fetch every member of the cottage, active or not -- for the Members
-  /// list screen, which shows an "Inactive" pill rather than hiding them.
+  /// Fetch every member of the cottage, active or inactive -- for the
+  /// Members list screen, which shows an "Inactive" pill rather than
+  /// hiding them. Still excludes soft-removed profiles: once removed, a
+  /// member drops off this list entirely (their historical records stay
+  /// intact -- only their spot on the roster disappears).
   Future<List<Profile>> getAllMembers(String cottageId) async {
     final rows = await _client
         .from('profiles')
         .select(_allMembersColumns)
         .eq('cottage_id', cottageId)
+        .isFilter('removed_at', null)
         .order('is_active', ascending: false)
         .order('first_name');
 
@@ -45,6 +55,47 @@ class MemberService {
         .from('profiles')
         .update({'is_active': active})
         .eq('id', userId);
+  }
+
+  /// Soft-removes a member from the cottage roster. The `profiles` row
+  /// (and every expense/meal/deposit/statement that references it) is
+  /// never deleted -- only `removed_at` is stamped, which every member
+  /// query above already filters out.
+  ///
+  /// Mirrors the web app's three guardrails client-side (defense in depth
+  /// -- `profiles_admin_write` RLS lets any super admin update any row in
+  /// their own cottage, so it alone wouldn't stop these):
+  /// - a super admin can't remove themselves
+  /// - a super admin can't remove another super admin
+  /// - a member must already be deactivated before they can be removed
+  ///
+  /// NOTE: this does NOT ban the member's auth account. Doing that needs
+  /// `admin.auth.admin.updateUserById(..., { ban_duration })`, which only
+  /// works with the Supabase service_role key -- that key must never be
+  /// embedded in a distributable mobile app (it grants full admin access
+  /// to every table, bypassing RLS entirely). A removed member is fully
+  /// hidden from the roster and excluded from every active-member query,
+  /// but their account isn't blocked from signing in until a trusted
+  /// server-side endpoint (an Edge Function or a Next.js API route
+  /// authenticated the same way, calling that Admin API) does the ban.
+  /// That endpoint doesn't exist in this codebase yet.
+  Future<void> removeMember({
+    required Profile viewer,
+    required Profile target,
+  }) async {
+    if (target.id == viewer.id) {
+      throw Exception('You cannot remove yourself.');
+    }
+    if (target.isSuperAdmin) {
+      throw Exception('Super admins cannot be removed.');
+    }
+    if (target.isActive) {
+      throw Exception('Deactivate this member before removing them.');
+    }
+    await _client
+        .from('profiles')
+        .update({'removed_at': DateTime.now().toIso8601String()})
+        .eq('id', target.id);
   }
 
   /// Grant/revoke a member's per-action permissions -- mirrors

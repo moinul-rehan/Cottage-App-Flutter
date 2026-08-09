@@ -10,6 +10,8 @@ class Profile {
   final String? avatarUrl;
   final String? mobileNumber;
   final String? address;
+  final String? roomLabel;
+  final String? hometown;
 
   /// 'super_admin' | 'member' -- mirrors profiles.role, used by notice-board
   /// visibility/management checks (see src/lib/notice-types.tsx).
@@ -19,6 +21,12 @@ class Profile {
   /// select this column (they already filter to active-only server-side),
   /// so a missing value should never be misread as inactive.
   final bool isActive;
+
+  /// Mirrors profiles.removed_at (supabase/migrations/0019) -- non-null
+  /// once a super admin has soft-removed this member. The row itself (and
+  /// every historical record referencing it) is never deleted, only
+  /// excluded from member queries -- see [MemberService].
+  final DateTime? removedAt;
 
   /// Per-action grants a super admin can hand to an ordinary member --
   /// mirror `profiles.can_add_*` (see supabase/migrations/0002, 0004, 0010,
@@ -39,8 +47,11 @@ class Profile {
     this.avatarUrl,
     this.mobileNumber,
     this.address,
+    this.roomLabel,
+    this.hometown,
     this.role = 'member',
     this.isActive = true,
+    this.removedAt,
     this.canAddExpenses = true,
     this.canAddBazaar = true,
     this.canAddMeals = true,
@@ -55,7 +66,13 @@ class Profile {
   /// can already post notices by default, so it isn't a real grant). Drives
   /// the "Manager" role label and the blue verified-tick badge, in place of
   /// the plain "Member" label and black tick.
-  bool get hasElevatedAccess => canAddExpenses || canAddBazaar || canAddMeals || canAddDeposit;
+  bool get hasElevatedAccess =>
+      canAddExpenses || canAddBazaar || canAddMeals || canAddDeposit;
+
+  /// A `member` (not `super_admin`) who's been granted any elevated
+  /// permission -- same rule as [hasElevatedAccess], named to match the
+  /// "Manager" role label callers use it for.
+  bool get isManager => !isSuperAdmin && hasElevatedAccess;
 
   factory Profile.fromMap(Map<String, dynamic> map) {
     return Profile(
@@ -67,8 +84,13 @@ class Profile {
       avatarUrl: map['avatar_url'] as String?,
       mobileNumber: map['mobile_number'] as String?,
       address: map['address'] as String?,
+      roomLabel: map['room_label'] as String?,
+      hometown: map['hometown'] as String?,
       role: map['role'] as String? ?? 'member',
       isActive: map['is_active'] as bool? ?? true,
+      removedAt: map['removed_at'] != null
+          ? DateTime.parse(map['removed_at'] as String)
+          : null,
       canAddExpenses: map['can_add_expenses'] as bool? ?? true,
       canAddBazaar: map['can_add_bazaar'] as bool? ?? true,
       canAddMeals: map['can_add_meals'] as bool? ?? true,
