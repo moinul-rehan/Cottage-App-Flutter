@@ -132,4 +132,67 @@ class MemberService {
         .single();
     return row['name'] as String? ?? 'Cottage';
   }
+
+  /// Invites or directly adds a member by email.
+  /// If a user with [email] exists in `profiles`:
+  /// - If they belong to this cottage already, returns [InviteMemberResult.alreadyInThisCottage].
+  /// - If they belong to another cottage, returns [InviteMemberResult.alreadyInAnotherCottage].
+  /// - If they have no cottage (or `cottage_id` is null/empty), directly updates their profile
+  ///   to join [cottageId] with [role], [roomLabel], etc., and returns [InviteMemberResult.added].
+  /// If no profile is found for [email], returns [InviteMemberResult.needsSignup].
+  Future<InviteMemberResult> inviteOrAddMember({
+    required String cottageId,
+    required String email,
+    required String firstName,
+    required String lastName,
+    required String role,
+    String? roomLabel,
+  }) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final rows = await _client
+        .from('profiles')
+        .select('id, cottage_id, email, first_name, last_name')
+        .ilike('email', cleanEmail);
+
+    if (rows.isEmpty) {
+      return InviteMemberResult.needsSignup;
+    }
+
+    final profileRow = (rows as List).first as Map<String, dynamic>;
+    final existingCottageId = profileRow['cottage_id'] as String?;
+
+    if (existingCottageId != null && existingCottageId == cottageId) {
+      return InviteMemberResult.alreadyInThisCottage;
+    }
+
+    if (existingCottageId != null && existingCottageId.isNotEmpty) {
+      return InviteMemberResult.alreadyInAnotherCottage;
+    }
+
+    final updateData = <String, dynamic>{
+      'cottage_id': cottageId,
+      'role': role,
+      'is_active': true,
+      'removed_at': null,
+    };
+    if (firstName.isNotEmpty) updateData['first_name'] = firstName;
+    if (lastName.isNotEmpty) updateData['last_name'] = lastName;
+    if (roomLabel != null && roomLabel.isNotEmpty) {
+      updateData['room_label'] = roomLabel;
+    }
+
+    await _client
+        .from('profiles')
+        .update(updateData)
+        .eq('id', profileRow['id']);
+
+    return InviteMemberResult.added;
+  }
+}
+
+enum InviteMemberResult {
+  added,
+  alreadyInThisCottage,
+  alreadyInAnotherCottage,
+  needsSignup,
 }

@@ -441,6 +441,35 @@ class _MembersScreenState extends State<MembersScreen>
                       ? 'Super Admin'
                       : 'Member';
 
+                  try {
+                    final result = await _memberService.inviteOrAddMember(
+                      cottageId: viewer.cottageId,
+                      email: email,
+                      firstName: firstName,
+                      lastName: lastName,
+                      role: role,
+                      roomLabel: room,
+                    );
+
+                    if (!mounted) return;
+
+                    if (result == InviteMemberResult.added) {
+                      Navigator.pop(sheetContext);
+                      showToast(context, '$firstName was added to $cottageName!');
+                      _refresh();
+                      return;
+                    } else if (result == InviteMemberResult.alreadyInThisCottage) {
+                      showToast(sheetContext, '$email is already in this cottage.');
+                      return;
+                    } else if (result == InviteMemberResult.alreadyInAnotherCottage) {
+                      showToast(sheetContext, '$email is already a member of another cottage.');
+                      return;
+                    }
+                  } catch (e) {
+                    showToast(sheetContext, 'Could not add member: $e');
+                    return;
+                  }
+
                   final subject =
                       "You're invited to join $cottageName on Cottage";
                   final body = StringBuffer()
@@ -453,7 +482,7 @@ class _MembersScreenState extends State<MembersScreen>
                     )
                     ..writeln()
                     ..writeln(
-                      'Download the Cottage app, sign up, and let ${viewer.displayName} know once you have -- they\'ll add you to the cottage.',
+                      'Download the Cottage app, sign up, and you\'ll be automatically added to the cottage.',
                     );
 
                   final uri = Uri(
