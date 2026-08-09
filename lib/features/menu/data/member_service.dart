@@ -245,42 +245,43 @@ class MemberService {
     String? lastError;
 
     try {
-      var response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(bodyData),
-      );
+      var currentUrl = url;
+      http.Response? response;
 
-      // Handle HTTP 307 / 308 redirects from Next.js / Vercel
-      if ((response.statusCode == 307 || response.statusCode == 308) &&
-          response.headers.containsKey('location')) {
-        final redirectLocation = response.headers['location']!;
-        final redirectUrl = Uri.parse(
-          redirectLocation.startsWith('http')
-              ? redirectLocation
-              : '$baseUrl$redirectLocation',
-        );
-        debugPrint(
-          'Next.js API returned status ${response.statusCode}. Automatically redirecting POST to $redirectUrl',
-        );
-
+      // Follow up to 5 consecutive redirects (301, 302, 307, 308)
+      for (int i = 0; i < 5; i++) {
         response = await http.post(
-          redirectUrl,
+          currentUrl,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
           },
           body: jsonEncode(bodyData),
         );
+
+        if (response.statusCode >= 300 &&
+            response.statusCode < 400 &&
+            response.headers.containsKey('location')) {
+          final location = response.headers['location']!;
+          final redirectUri = Uri.parse(
+            location.startsWith('http')
+                ? location
+                : '${currentUrl.scheme}://${currentUrl.host}${location.startsWith('/') ? '' : '/'}$location',
+          );
+          debugPrint(
+            'Next.js API redirected (${response.statusCode}) from $currentUrl to $redirectUri',
+          );
+          currentUrl = redirectUri;
+        } else {
+          break;
+        }
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response != null &&
+          (response.statusCode == 200 || response.statusCode == 201)) {
         debugPrint('Next.js /api/members/invite succeeded: ${response.body}');
         return const BackendInviteResponse(isSuccess: true);
-      } else {
+      } else if (response != null) {
         lastError =
             'Backend API error (${response.statusCode}): ${response.body}';
         debugPrint('Next.js /api/members/invite error: $lastError');
