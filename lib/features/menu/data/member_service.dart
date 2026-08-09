@@ -151,7 +151,7 @@ class MemberService {
     final cleanEmail = email.trim().toLowerCase();
     final rows = await _client
         .from('profiles')
-        .select('id, cottage_id, email, first_name, last_name')
+        .select('id, cottage_id, email, first_name, last_name, removed_at, is_active')
         .ilike('email', cleanEmail);
 
     if (rows.isEmpty) {
@@ -160,22 +160,40 @@ class MemberService {
 
     final profileRow = (rows as List).first as Map<String, dynamic>;
     final existingCottageId = profileRow['cottage_id'] as String?;
+    final removedAt = profileRow['removed_at'];
 
-    if (existingCottageId != null && existingCottageId == cottageId) {
-      return InviteMemberResult.alreadyInThisCottage;
-    }
-
-    if (existingCottageId != null && existingCottageId.isNotEmpty) {
+    // If profile belongs to another cottage, reject:
+    if (existingCottageId != null &&
+        existingCottageId.isNotEmpty &&
+        existingCottageId != cottageId) {
       return InviteMemberResult.alreadyInAnotherCottage;
     }
 
+    // If profile belongs to THIS cottage and is already active & not removed:
+    if (existingCottageId == cottageId &&
+        removedAt == null &&
+        (profileRow['is_active'] == true)) {
+      return InviteMemberResult.alreadyInThisCottage;
+    }
+
+    // Otherwise (no cottage assigned OR soft-removed/inactive in this cottage),
+    // restore and activate their profile so they immediately appear in the member list!
     final updateData = <String, dynamic>{
       'cottage_id': cottageId,
       'role': role,
       'is_active': true,
       'removed_at': null,
     };
-    if (firstName.isNotEmpty) updateData['first_name'] = firstName;
+
+    final existingFirstName = profileRow['first_name'] as String?;
+    if (firstName.isNotEmpty) {
+      updateData['first_name'] = firstName;
+    } else if (existingFirstName == null || existingFirstName.trim().isEmpty) {
+      final emailPrefix = cleanEmail.split('@').first;
+      updateData['first_name'] =
+          emailPrefix[0].toUpperCase() + emailPrefix.substring(1);
+    }
+
     if (lastName.isNotEmpty) updateData['last_name'] = lastName;
     if (roomLabel != null && roomLabel.isNotEmpty) {
       updateData['room_label'] = roomLabel;
