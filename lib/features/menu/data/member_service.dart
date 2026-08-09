@@ -308,7 +308,6 @@ class BackendInviteResponse {
     this.errorMessage,
   });
 }
-}
 
 enum InviteMemberResult {
   added,

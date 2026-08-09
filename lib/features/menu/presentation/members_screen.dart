@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:cottage/models/profile.dart';
 import '../data/member_service.dart';
 import '../../dashboard/data/dashboard_service.dart';
