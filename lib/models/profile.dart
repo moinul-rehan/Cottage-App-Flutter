@@ -50,6 +50,13 @@ class Profile {
 
   bool get isSuperAdmin => role == 'super_admin';
 
+  /// True once a super admin has granted this member any of the four
+  /// grantable permissions (`can_add_notice` doesn't count -- every member
+  /// can already post notices by default, so it isn't a real grant). Drives
+  /// the "Manager" role label and the blue verified-tick badge, in place of
+  /// the plain "Member" label and black tick.
+  bool get hasElevatedAccess => canAddExpenses || canAddBazaar || canAddMeals || canAddDeposit;
+
   factory Profile.fromMap(Map<String, dynamic> map) {
     return Profile(
       id: map['id'] as String,

@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
+import 'features/dashboard/data/dashboard_data.dart';
+import 'features/dashboard/data/dashboard_service.dart';
 import 'package:cottage/helpers/onboarding_service.dart';
 import 'package:cottage/helpers/push_notification_service.dart';
 import 'package:cottage/helpers/supabase_service.dart';
@@ -12,6 +14,7 @@ import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/bottom_nav_shell.dart';
 import 'package:cottage/constants/app_constants.dart';
 import 'package:cottage/helpers/navigation_service.dart';
+import 'package:cottage/models/profile.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +35,47 @@ class CottageApp extends StatefulWidget {
 
 class _CottageAppState extends State<CottageApp> {
   bool _showSplash = true;
+  bool _splashAnimationDone = false;
+  bool _dashboardReady = false;
+  (Profile, DashboardData)? _preloadedDashboard;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefetchDashboard();
+  }
+
+  /// Loads the signed-in member's dashboard data alongside the splash
+  /// animation instead of after it, so [SplashScreen] stays up until the
+  /// Dashboard has something to show -- no separate loading state ever
+  /// flashes between splash and a populated Dashboard. If there's no
+  /// session (going to Login/Onboarding instead), there's nothing to wait
+  /// for, so this resolves immediately.
+  Future<void> _prefetchDashboard() async {
+    final session = SupabaseService.currentSession;
+    if (session != null) {
+      try {
+        final service = DashboardService();
+        final profile = await service.getCurrentProfile();
+        final data = await service.load(profile);
+        _preloadedDashboard = (profile, data);
+      } catch (_) {
+        // Left null -- DashboardScreen falls back to its own load/retry UI.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _dashboardReady = true;
+      if (_splashAnimationDone) _showSplash = false;
+    });
+  }
+
+  void _onSplashAnimationDone() {
+    setState(() {
+      _splashAnimationDone = true;
+      if (_dashboardReady) _showSplash = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,14 +96,16 @@ class _CottageAppState extends State<CottageApp> {
                   child: _showSplash
                       ? SplashScreen(
                           key: const ValueKey('splash'),
-                          onFinished: () => setState(() => _showSplash = false),
+                          onFinished: _onSplashAnimationDone,
                         )
                       : ValueListenableBuilder<bool>(
                           key: const ValueKey('app'),
                           valueListenable: OnboardingService.completed,
                           builder: (context, seenOnboarding, _) {
                             return seenOnboarding
-                                ? const _AuthGate()
+                                ? _AuthGate(
+                                    preloadedDashboard: _preloadedDashboard,
+                                  )
                                 : const OnboardingScreen();
                           },
                         ),
@@ -88,7 +134,8 @@ class _CottageAppState extends State<CottageApp> {
 /// also pops back to the root route via [NavigationService.popToRoot], the
 /// same way a successful password sign-in/signup used to navigate manually.
 class _AuthGate extends StatefulWidget {
-  const _AuthGate();
+  final (Profile, DashboardData)? preloadedDashboard;
+  const _AuthGate({this.preloadedDashboard});
 
   @override
   State<_AuthGate> createState() => _AuthGateState();
@@ -129,7 +176,9 @@ class _AuthGateState extends State<_AuthGate> {
       builder: (context, snapshot) {
         final session =
             snapshot.data?.session ?? SupabaseService.currentSession;
-        return session != null ? const BottomNavShell() : const LoginScreen();
+        return session != null
+            ? BottomNavShell(preloadedDashboard: widget.preloadedDashboard)
+            : const LoginScreen();
       },
     );
   }

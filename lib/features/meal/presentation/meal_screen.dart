@@ -261,7 +261,10 @@ class _MealScreenState extends State<MealScreen>
                   count: counts[member.id]!,
                   onChanged: (v) => setSheetState(() => counts[member.id] = v),
                 ),
-                if (member != data.members.last) const SizedBox(height: 8) else const SizedBox(height: 16),
+                if (member != data.members.last)
+                  const SizedBox(height: 8)
+                else
+                  const SizedBox(height: 16),
               ],
               _DrawerSaveButton(
                 label: 'Save Meal Count',
@@ -274,6 +277,7 @@ class _MealScreenState extends State<MealScreen>
                       date: selectedDate,
                       count: counts[member.id]!,
                       cottageId: data.profile.cottageId,
+                      createdBy: data.profile.id,
                     );
                   }
                   _refresh();
@@ -292,6 +296,7 @@ class _MealScreenState extends State<MealScreen>
     List<Profile> members,
     String cottageId,
     String monthKey,
+    String createdBy,
   ) {
     final controllers = <String, TextEditingController>{};
     for (final member in members) {
@@ -369,6 +374,7 @@ class _MealScreenState extends State<MealScreen>
                   date: date,
                   count: count,
                   cottageId: cottageId,
+                  createdBy: createdBy,
                 );
               }
               _refresh();
@@ -414,8 +420,9 @@ class _MealScreenState extends State<MealScreen>
                     firstDate: DateTime(now.year, now.month, 1),
                     lastDate: now,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedDate = _isoDate(picked));
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -428,8 +435,9 @@ class _MealScreenState extends State<MealScreen>
                     data.members,
                     selectedUserId,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedUserId = picked);
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -674,8 +682,9 @@ class _MealScreenState extends State<MealScreen>
                     data.members,
                     selectedUserId,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedUserId = picked);
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -699,8 +708,9 @@ class _MealScreenState extends State<MealScreen>
                     firstDate: DateTime(now.year, now.month, 1),
                     lastDate: now,
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setSheetState(() => selectedDate = _isoDate(picked));
+                  }
                 },
               ),
               const SizedBox(height: 16),
@@ -1014,6 +1024,7 @@ class _MealScreenState extends State<MealScreen>
                       data.members,
                       data.profile.cottageId,
                       data.monthKey,
+                      data.profile.id,
                     ),
                   ),
                   _BazaarTab(
@@ -1230,7 +1241,9 @@ class _MealCountTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface.background,
         border: Border.all(color: surface.border, width: 0.8),
-        borderRadius: BorderRadius.circular(4), // Figma: 4px (not 8 -- smaller than the other card radii)
+        borderRadius: BorderRadius.circular(
+          4,
+        ), // Figma: 4px (not 8 -- smaller than the other card radii)
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -79,7 +79,12 @@ class _ContactsScreenState extends State<ContactsScreen>
     }
   }
 
-  static const _contactCategories = ['Landlord', 'Electrician', 'Plumber', 'Other'];
+  static const _contactCategories = [
+    'Landlord',
+    'Electrician',
+    'Plumber',
+    'Other',
+  ];
 
   /// Figma node 84:1123 ("Create Contact - Drawer"): Name/Category/Phone
   /// required, Email optional, Category is a fixed chip picker rather than
@@ -89,90 +94,187 @@ class _ContactsScreenState extends State<ContactsScreen>
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    final otherCtrl = TextEditingController();
     String category = _contactCategories.first;
 
     showCottageSheet(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => CottageSheetContent(
-          title: 'Create Contact',
-          children: [
-            const Row(
-              children: [
-                Text('Name ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
-                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
-              ],
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(hintText: 'e.g. Rafiqul Islam'),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 12),
-            const Row(
-              children: [
-                Text('Category ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
-                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final c in _contactCategories)
-                  _CategoryChip(
-                    label: c,
-                    selected: category == c,
-                    onTap: () => setSheetState(() => category = c),
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.call_outlined,
+                    size: 20,
+                    color: Color(0xFF17191E),
                   ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Create Contact',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF17191E),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(sheetContext),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAFAFA),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Color(0xFF404040),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Text(
+                    'Name ',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                  ),
+                  Text(
+                    '*',
+                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameCtrl,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                decoration: _contactFieldDecoration('e.g. Rafiqul Islam'),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Text(
+                    'Category ',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                  ),
+                  Text(
+                    '*',
+                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in _contactCategories)
+                    _CategoryChip(
+                      label: c,
+                      selected: category == c,
+                      onTap: () => setSheetState(() => category = c),
+                    ),
+                ],
+              ),
+              if (category == 'Other') ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otherCtrl,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF404040),
+                  ),
+                  decoration: _contactFieldDecoration('Servant'),
+                  textCapitalization: TextCapitalization.words,
+                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            const Row(
-              children: [
-                Text('Phone ', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
-                Text('*', style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F))),
-              ],
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: phoneCtrl,
-              decoration: const InputDecoration(hintText: '01711-223344'),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-            const Text('Email (optional)', style: TextStyle(fontSize: 13, color: Color(0xFF404040))),
-            const SizedBox(height: 6),
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(hintText: 'name@example.com'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                final phone = phoneCtrl.text.trim();
-                if (name.isEmpty || phone.isEmpty) {
-                  showToast(sheetContext, 'Name and phone are required.');
-                  return;
-                }
-                Navigator.pop(sheetContext);
-                await _contactService.createContact(
-                  cottageId: profile.cottageId,
-                  createdBy: profile.id,
-                  name: name,
-                  label: category,
-                  mobileNumber: phone,
-                  email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
-                );
-                _refresh();
-              },
-              child: const Text('Save Contact'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Text(
+                    'Phone ',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                  ),
+                  Text(
+                    '*',
+                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: phoneCtrl,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                decoration: _contactFieldDecoration('01711-223344'),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Email (optional)',
+                style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: emailCtrl,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                decoration: _contactFieldDecoration('name@example.com'),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final phone = phoneCtrl.text.trim();
+                  final other = otherCtrl.text.trim();
+                  if (name.isEmpty || phone.isEmpty) {
+                    showToast(sheetContext, 'Name and phone are required.');
+                    return;
+                  }
+                  if (category == 'Other' && other.isEmpty) {
+                    showToast(sheetContext, 'Enter a custom category.');
+                    return;
+                  }
+                  Navigator.pop(sheetContext);
+                  await _contactService.createContact(
+                    cottageId: profile.cottageId,
+                    createdBy: profile.id,
+                    name: name,
+                    label: category == 'Other' ? other : category,
+                    mobileNumber: phone,
+                    email: emailCtrl.text.trim().isEmpty
+                        ? null
+                        : emailCtrl.text.trim(),
+                  );
+                  _refresh();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD1593B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Save Contact',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -320,11 +422,36 @@ class _ContactsScreenState extends State<ContactsScreen>
   }
 }
 
+/// Figma node 84:1123's field style: #FAFAFA fill, #EEEEEE border, 10px
+/// radius, 14/12 padding, #AAAAAA hint text -- used by every text field in
+/// the Create Contact drawer.
+InputDecoration _contactFieldDecoration(String hint) {
+  const border = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: Color(0xFFEEEEEE)),
+  );
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+    filled: true,
+    fillColor: const Color(0xFFFAFAFA),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: border,
+    enabledBorder: border,
+    focusedBorder: border,
+    isDense: true,
+  );
+}
+
 class _CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _CategoryChip({required this.label, required this.selected, required this.onTap});
+  const _CategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -333,8 +460,10 @@ class _CategoryChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
-          border: Border.all(color: selected ? CottageColors.primary : const Color(0xFFEEEEEE)),
+          color: selected ? const Color(0xFFDE7356) : const Color(0xFFFAFAFA),
+          border: Border.all(
+            color: selected ? const Color(0xFFDE7356) : const Color(0xFFEEEEEE),
+          ),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(

@@ -21,7 +21,9 @@ class Expense {
   });
 
   factory Expense.fromMap(Map<String, dynamic> map) {
-    final profile = map['profiles'] as Map<String, dynamic>? ?? map['payer'] as Map<String, dynamic>?;
+    final profile =
+        map['profiles'] as Map<String, dynamic>? ??
+        map['payer'] as Map<String, dynamic>?;
     final firstName = profile?['first_name'] as String? ?? '';
     final lastName = profile?['last_name'] as String? ?? '';
     final displayName = lastName.isNotEmpty

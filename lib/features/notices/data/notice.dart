@@ -117,10 +117,12 @@ class Notice {
 List<Notice> sortNoticesForDisplay(List<Notice> notices) {
   final list = List<Notice>.of(notices);
   list.sort((a, b) {
-    if (a.type == NoticeType.emergency && b.type != NoticeType.emergency)
+    if (a.type == NoticeType.emergency && b.type != NoticeType.emergency) {
       return -1;
-    if (b.type == NoticeType.emergency && a.type != NoticeType.emergency)
+    }
+    if (b.type == NoticeType.emergency && a.type != NoticeType.emergency) {
       return 1;
+    }
     final p = kPriorityMeta[a.priority]!.order.compareTo(
       kPriorityMeta[b.priority]!.order,
     );

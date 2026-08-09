@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'package:cottage/constants/theme.dart';
 
 /// Cottage's standard confirmation popup -- Figma node 87:1646 ("Confirm
@@ -19,10 +20,16 @@ Future<bool> showConfirmModal(
   String cancelLabel = 'Cancel',
   bool destructive = false,
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showGeneralDialog<bool>(
     context: context,
+    barrierDismissible: true,
+    barrierLabel: title,
     barrierColor: const Color(0x8C0F0F0F), // rgba(15,15,15,0.55)
-    builder: (ctx) => Dialog(
+    transitionDuration: const Duration(milliseconds: 300),
+    transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+      return FadeScaleTransition(animation: animation, child: child);
+    },
+    pageBuilder: (ctx, animation, secondaryAnimation) => Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
       child: Container(
@@ -32,7 +39,12 @@ Future<bool> showConfirmModal(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 32, offset: const Offset(0, 12), spreadRadius: -4),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+              spreadRadius: -4,
+            ),
           ],
         ),
         child: Column(
@@ -43,24 +55,42 @@ Future<bool> showConfirmModal(
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: destructive ? const Color(0xFFFFE9E9) : const Color(0xFFFBE9E2),
+                color: destructive
+                    ? const Color(0xFFFFE9E9)
+                    : const Color(0xFFFBE9E2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 24, color: destructive ? const Color(0xFFCC4F4F) : CottageColors.primary),
+              child: Icon(
+                icon,
+                size: 24,
+                color: destructive
+                    ? const Color(0xFFCC4F4F)
+                    : CottageColors.primary,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFF2A2A2A)),
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2A2A2A),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, height: 1.4, color: Color(0xFF707070)),
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: Color(0xFF707070),
+              ),
             ),
-            const SizedBox(height: 20), // Figma: gap-16 + the button row's own pt-4
+            const SizedBox(
+              height: 20,
+            ), // Figma: gap-16 + the button row's own pt-4
             Row(
               children: [
                 Expanded(
@@ -70,7 +100,13 @@ Future<bool> showConfirmModal(
                     background: Colors.white,
                     textColor: const Color(0xFF404040),
                     border: Border.all(color: const Color(0xFFEEEEEE)),
-                    shadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 2, offset: const Offset(0, 1))],
+                    shadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -78,7 +114,9 @@ Future<bool> showConfirmModal(
                   child: _ConfirmModalButton(
                     label: confirmLabel,
                     onTap: () => Navigator.pop(ctx, true),
-                    background: destructive ? const Color(0xFFCC4F4F) : CottageColors.primary,
+                    background: destructive
+                        ? const Color(0xFFCC4F4F)
+                        : CottageColors.primary,
                     textColor: Colors.white,
                   ),
                 ),
@@ -122,7 +160,14 @@ class _ConfirmModalButton extends StatelessWidget {
           border: border,
           boxShadow: shadow,
         ),
-        child: Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
       ),
     );
   }

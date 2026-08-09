@@ -47,11 +47,44 @@ class BazaarDutyRoster extends StatelessWidget {
     required this.currentUserId,
   });
 
+  /// One row per member instead of one per duty row -- [duties] holds every
+  /// duty ever assigned (past, active, and upcoming), so a member with a
+  /// long history would otherwise show up here once per past duty. Picks
+  /// each member's current duty if they're on duty today, else their
+  /// nearest upcoming one, else falls back to their most recent past one so
+  /// they still appear somewhere in the shared roster.
+  List<BazaarDuty> _oncePerMember(List<BazaarDuty> duties) {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final byUser = <String, List<BazaarDuty>>{};
+    for (final d in duties) {
+      byUser.putIfAbsent(d.userId, () => []).add(d);
+    }
+
+    final result = <BazaarDuty>[];
+    for (final userDuties in byUser.values) {
+      userDuties.sort((a, b) => a.startDate.compareTo(b.startDate));
+      final active = userDuties.where(
+        (d) => d.startDate.compareTo(today) <= 0 && today.compareTo(d.endDate) <= 0,
+      );
+      if (active.isNotEmpty) {
+        result.add(active.first);
+        continue;
+      }
+      final upcoming = userDuties.where((d) => d.startDate.compareTo(today) > 0);
+      if (upcoming.isNotEmpty) {
+        result.add(upcoming.first);
+        continue;
+      }
+      result.add(userDuties.last);
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (duties.isEmpty) return const SizedBox.shrink();
 
-    final sortedDuties = List<BazaarDuty>.from(duties)
+    final sortedDuties = _oncePerMember(duties)
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
     return Container(

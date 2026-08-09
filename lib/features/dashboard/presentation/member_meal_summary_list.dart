@@ -12,7 +12,11 @@ import '../../bazaar_duty/data/bazaar_duty_models.dart';
 class MemberMealSummaryList extends StatelessWidget {
   final List<MemberMealRow> rows;
   final List<BazaarDuty> bazaarDuties;
-  const MemberMealSummaryList({super.key, required this.rows, required this.bazaarDuties});
+  const MemberMealSummaryList({
+    super.key,
+    required this.rows,
+    required this.bazaarDuties,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +27,11 @@ class MemberMealSummaryList extends StatelessWidget {
       children: [
         const Text(
           'Member Meal Summary',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF1E1E1E)),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1E1E1E),
+          ),
         ),
         const SizedBox(height: 16),
         for (int i = 0; i < rows.length; i++) ...[
@@ -41,17 +49,31 @@ class _MemberCard extends StatelessWidget {
   const _MemberCard({required this.row, required this.bazaarDuties});
 
   String _tk(double v) => '${v.toStringAsFixed(2)} tk';
-  String _count(double v) => v.toStringAsFixed(v % 1 == 0 ? 0 : 1).padLeft(2, '0');
+  String _count(double v) =>
+      v.toStringAsFixed(v % 1 == 0 ? 0 : 1).padLeft(2, '0');
 
   String _formatDate(String iso) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     try {
       final parts = iso.split('-');
       if (parts.length < 3) return iso;
       final month = int.tryParse(parts[1]) ?? 1;
       final day = int.tryParse(parts[2]) ?? 1;
       if (month < 1 || month > 12) return iso;
-      
+
       String suffix = 'th';
       if (day % 10 == 1 && day != 11) {
         suffix = 'st';
@@ -60,7 +82,7 @@ class _MemberCard extends StatelessWidget {
       } else if (day % 10 == 3 && day != 13) {
         suffix = 'rd';
       }
-      
+
       return '$day$suffix ${months[month - 1]}';
     } catch (_) {
       return iso;
@@ -71,15 +93,32 @@ class _MemberCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final surface = context.surface;
     final balancePositive = row.balance >= 0;
-    final initial = row.firstName.isNotEmpty ? row.firstName[0].toUpperCase() : '?';
+    final initial = row.firstName.isNotEmpty
+        ? row.firstName[0].toUpperCase()
+        : '?';
 
     final myDuties = bazaarDuties.where((d) => d.userId == row.id).toList();
     BazaarDuty? activeOrNextDuty;
     if (myDuties.isNotEmpty) {
       myDuties.sort((a, b) => a.startDate.compareTo(b.startDate));
+      final today = DateTime.now().toIso8601String().substring(0, 10);
       activeOrNextDuty = myDuties.firstWhere(
-        (d) => bazaarDutyStatus(d.startDate, d.endDate) == BazaarDutyStatus.active,
-        orElse: () => myDuties.first,
+        (d) =>
+            bazaarDutyStatus(d.startDate, d.endDate) == BazaarDutyStatus.active,
+        orElse: () {
+          // No active duty right now: prefer the nearest upcoming one, else
+          // fall back to the most recently *completed* one (so a finished
+          // duty still shows its own date range here instead of whichever
+          // duty happens to be earliest in this member's whole history).
+          final upcoming = myDuties
+              .where((d) => d.startDate.compareTo(today) > 0)
+              .toList();
+          if (upcoming.isNotEmpty) return upcoming.first;
+          final past =
+              myDuties.where((d) => d.endDate.compareTo(today) < 0).toList()
+                ..sort((a, b) => b.endDate.compareTo(a.endDate));
+          return past.isNotEmpty ? past.first : myDuties.first;
+        },
       );
     }
 
@@ -106,7 +145,8 @@ class _MemberCard extends StatelessWidget {
                           ? Image.network(
                               row.avatarUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => _Initial(initial: initial),
+                              errorBuilder: (_, _, _) =>
+                                  _Initial(initial: initial),
                             )
                           : _Initial(initial: initial),
                     ),
@@ -117,9 +157,19 @@ class _MemberCard extends StatelessWidget {
                     children: [
                       Text(
                         row.displayName,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: surface.foreground),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: surface.foreground,
+                        ),
                       ),
-                      Text('Meal Summary Breakdown', style: TextStyle(fontSize: 13, color: surface.mutedForeground)),
+                      Text(
+                        'Meal Summary Breakdown',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: surface.mutedForeground,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -129,17 +179,35 @@ class _MemberCard extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Total Meals Taken'),
-                trailing: Text(_count(row.meals), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                trailing: Text(
+                  _count(row.meals),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Total Deposit Amount'),
-                trailing: Text(_tk(row.deposit), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                trailing: Text(
+                  _tk(row.deposit),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Total Calculated Cost'),
-                trailing: Text(_tk(row.cost), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                trailing: Text(
+                  _tk(row.cost),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -149,7 +217,9 @@ class _MemberCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: balancePositive ? const Color(0xFF289029) : CottageColors.destructive,
+                    color: balancePositive
+                        ? const Color(0xFF289029)
+                        : CottageColors.destructive,
                   ),
                 ),
               ),
@@ -190,7 +260,8 @@ class _MemberCard extends StatelessWidget {
                         ? Image.network(
                             row.avatarUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _Initial(initial: initial),
+                            errorBuilder: (_, _, _) =>
+                                _Initial(initial: initial),
                           )
                         : _Initial(initial: initial),
                   ),
@@ -202,13 +273,20 @@ class _MemberCard extends StatelessWidget {
                     children: [
                       Text(
                         row.displayName,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF374151),
+                        ),
                       ),
                       if (activeOrNextDuty != null) ...[
                         const SizedBox(height: 2),
                         Text(
                           '${_formatDate(activeOrNextDuty.startDate)} - ${_formatDate(activeOrNextDuty.endDate)} (Bazar Duty)',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF9CA3AF),
+                          ),
                         ),
                       ],
                     ],
@@ -219,20 +297,40 @@ class _MemberCard extends StatelessWidget {
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(child: _Stat(label: 'Total Meal', value: _count(row.meals), surface: surface)),
-                Expanded(child: _Stat(label: 'Deposit', value: _tk(row.deposit), surface: surface)),
+                Expanded(
+                  child: _Stat(
+                    label: 'Total Meal',
+                    value: _count(row.meals),
+                    surface: surface,
+                  ),
+                ),
+                Expanded(
+                  child: _Stat(
+                    label: 'Deposit',
+                    value: _tk(row.deposit),
+                    surface: surface,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
             Row(
               children: [
-                Expanded(child: _Stat(label: 'Meal Cost', value: _tk(row.cost), surface: surface)),
+                Expanded(
+                  child: _Stat(
+                    label: 'Meal Cost',
+                    value: _tk(row.cost),
+                    surface: surface,
+                  ),
+                ),
                 Expanded(
                   child: _Stat(
                     label: 'Balance',
                     value: _tk(row.balance),
                     surface: surface,
-                    valueColor: balancePositive ? const Color(0xFF289029) : const Color(0xFFFF0000),
+                    valueColor: balancePositive
+                        ? const Color(0xFF289029)
+                        : const Color(0xFFFF0000),
                   ),
                 ),
               ],
@@ -250,16 +348,31 @@ class _Stat extends StatelessWidget {
   final CottageSurface surface;
   final Color? valueColor;
 
-  const _Stat({required this.label, required this.value, required this.surface, this.valueColor});
+  const _Stat({
+    required this.label,
+    required this.value,
+    required this.surface,
+    this.valueColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+        ),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: valueColor ?? const Color(0xFF374151))),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? const Color(0xFF374151),
+          ),
+        ),
       ],
     );
   }
@@ -275,7 +388,14 @@ class _Initial extends StatelessWidget {
     return Container(
       color: surface.accent,
       alignment: Alignment.center,
-      child: Text(initial, style: TextStyle(color: surface.accentForeground, fontWeight: FontWeight.w600, fontSize: 18)),
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: surface.accentForeground,
+          fontWeight: FontWeight.w600,
+          fontSize: 18,
+        ),
+      ),
     );
   }
 }

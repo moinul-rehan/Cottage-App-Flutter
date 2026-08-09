@@ -22,7 +22,9 @@ class UtilityService {
     final (start, end) = _monthRange(monthKey);
     final rows = await _client
         .from('expenses')
-        .select('*, payer:profiles!expenses_paid_by_fkey(first_name, last_name)')
+        .select(
+          '*, payer:profiles!expenses_paid_by_fkey(first_name, last_name)',
+        )
         .gte('expense_date', start)
         .lt('expense_date', end)
         .order('expense_date', ascending: false);
@@ -45,17 +47,24 @@ class UtilityService {
       'cottage_id': cottageId,
       'amount': amount,
       'expense_date': expenseDate,
-      if (description != null && description.isNotEmpty) 'description': description,
+      if (description != null && description.isNotEmpty)
+        'description': description,
       if (category != null && category.isNotEmpty) 'category': category,
-      if (paymentSource != null && paymentSource.isNotEmpty) 'payment_source': paymentSource,
+      if (paymentSource != null && paymentSource.isNotEmpty)
+        'payment_source': paymentSource,
     });
   }
 
   /// Fetch all utility deposits for the given month, with member names.
-  Future<List<UtilityDeposit>> getDeposits(String cottageId, String monthKey) async {
+  Future<List<UtilityDeposit>> getDeposits(
+    String cottageId,
+    String monthKey,
+  ) async {
     final rows = await _client
         .from('utility_deposits')
-        .select('*, profiles!utility_deposits_user_id_fkey(first_name, last_name, avatar_url)')
+        .select(
+          '*, profiles!utility_deposits_user_id_fkey(first_name, last_name, avatar_url)',
+        )
         .eq('cottage_id', cottageId)
         .eq('month_key', monthKey)
         .order('created_at', ascending: false);

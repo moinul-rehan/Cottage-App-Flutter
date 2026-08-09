@@ -68,7 +68,11 @@ class DashboardGreeting extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  VerifiedBadge(isSuperAdmin: profile.isSuperAdmin, defaultColor: CottageColors.primaryForeground),
+                  VerifiedBadge(
+                    isSuperAdmin: profile.isSuperAdmin,
+                    hasElevatedAccess: profile.hasElevatedAccess,
+                    defaultColor: CottageColors.primaryForeground,
+                  ),
                 ],
               ),
               if (cottageName.isNotEmpty) ...[

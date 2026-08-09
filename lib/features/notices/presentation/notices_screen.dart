@@ -677,8 +677,9 @@ class _NoticesScreenState extends State<NoticesScreen>
               canManage: canManage,
               showStatusBadge: showStatus,
               onManage: (v) async {
-                if (v == 'pin')
+                if (v == 'pin') {
                   await _noticeService.togglePin(n.id, !n.isPinned);
+                }
                 if (v == 'archive') await _noticeService.archiveNotice(n.id);
                 _refresh();
               },
@@ -812,11 +813,19 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.safeAreaTop,
   });
 
+  // minExtent sets the header's fully-collapsed height, which in turn sets
+  // the gap between the collapsed title's fixed 56px band and the
+  // Create-Notice-button/tab-switcher block pinned at the header's bottom
+  // (8px from the very bottom): 56 (title band) + 12 (target gap) + 40
+  // (button) + 16 (button-to-switcher gap) + 34 (tab switcher) + 8 (bottom
+  // margin) = 166. maxExtent keeps the same 84px of extra room the
+  // expanded/scrolled-down state had before, for its taller description
+  // text.
   @override
-  double get minExtent => safeAreaTop + 150.0;
+  double get minExtent => safeAreaTop + 166.0;
 
   @override
-  double get maxExtent => safeAreaTop + 234.0;
+  double get maxExtent => safeAreaTop + 250.0;
 
   @override
   Widget build(
@@ -911,18 +920,22 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
 
-        // Collapsed Content (Fades in)
+        // Collapsed Content (Fades in) -- same fixed-height title band as
+        // the expanded content above, so the title only crossfades color
+        // in place instead of drifting down to the middle of the whole
+        // (much taller) pinned header once it's no longer height-bound by
+        // the expanded content's Container.
         if (progress > 0.0)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            bottom: 0,
             child: Opacity(
               opacity: progress,
               child: IgnorePointer(
                 ignoring: progress < 0.5,
                 child: Container(
+                  height: safeAreaTop + 56,
                   padding: EdgeInsets.only(
                     top: safeAreaTop + 8,
                     left: context.responsivePadding,

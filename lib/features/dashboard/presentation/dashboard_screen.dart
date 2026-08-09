@@ -3,6 +3,7 @@ import '../data/dashboard_data.dart';
 import '../data/dashboard_service.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
+import 'package:cottage/common_widgets/cottage_loader.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import '../../bazaar_duty/presentation/bazaar_duty_roster.dart';
 import 'dashboard_header.dart';
@@ -21,7 +22,20 @@ import 'utility_expense_list.dart';
 /// src/app/(house)/dashboard/page.tsx + MobileDashboardHero.tsx. The "just
 /// posted" notice popup is deferred to a later phase.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // Lets BottomNavShell force a reload when the Home tab is switched back
+  // into -- DashboardScreen lives inside an IndexedStack, so it's built
+  // once and kept alive; without this, data changed from another tab (e.g.
+  // assigning yourself a bazaar duty in Members) never shows up here until
+  // the app is restarted.
+  static final dashboardScreenKey = GlobalKey<_DashboardScreenState>();
+
+  /// Fetched by [CottageApp] while the splash screen was still animating
+  /// (main.dart's `_prefetchDashboard`) -- when present, used instead of
+  /// firing a fresh fetch, so the very first frame after splash is already
+  /// fully populated.
+  final (Profile, DashboardData)? preloadedData;
+
+  const DashboardScreen({super.key, this.preloadedData});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -36,7 +50,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _future = _load();
+    _future = widget.preloadedData != null
+        ? Future.value(widget.preloadedData!)
+        : _load();
   }
 
   @override
@@ -70,6 +86,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     setState(() => _future = _load());
   }
 
+  /// Public so [DashboardScreen.dashboardScreenKey] can force a reload from
+  /// outside (see BottomNavShell._handleTabTap).
+  void refresh() => _retry();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,7 +100,13 @@ class _DashboardScreenState extends State<DashboardScreen>
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const SizedBox.shrink();
+            // Same orange background + spinning logo as SplashScreen, so
+            // the hand-off from splash to a still-loading dashboard reads
+            // as one continuous loading screen instead of a white flash.
+            return const ColoredBox(
+              color: CottageColors.primary,
+              child: Center(child: CottageLoader(size: 72)),
+            );
           }
           if (snapshot.hasError) {
             return Center(

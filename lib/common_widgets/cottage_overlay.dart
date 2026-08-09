@@ -14,7 +14,7 @@ class CottageOverlay {
       builder: (context) => Material(
         color: Colors.transparent,
         child: Container(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withValues(alpha: 0.15),
           child: const Center(
             child: CottageLoader(),
           ),

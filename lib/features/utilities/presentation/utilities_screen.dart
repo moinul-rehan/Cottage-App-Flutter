@@ -4,6 +4,7 @@ import '../data/utility_models.dart';
 import '../../dashboard/data/dashboard_service.dart';
 import '../../menu/data/member_service.dart';
 import '../data/utility_service.dart';
+import 'utility_statement_screen.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
@@ -41,7 +42,8 @@ class UtilitiesScreen extends StatefulWidget {
   State<UtilitiesScreen> createState() => _UtilitiesScreenState();
 }
 
-class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProviderStateMixin {
+class _UtilitiesScreenState extends State<UtilitiesScreen>
+    with SingleTickerProviderStateMixin {
   final _utilityService = UtilityService();
   final _dashService = DashboardService();
   final _memberService = MemberService();
@@ -57,6 +59,10 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
       _showAddDeposit(data, sourceType: 'member');
     } else if (action == 'cottage-deposit') {
       _showAddDeposit(data, sourceType: 'cottage');
+    } else if (action == 'utility-statement') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const UtilityStatementScreen()));
     }
   }
 
@@ -89,7 +95,10 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
     final monthKey = await _dashService.getActiveMonthKey(profile.cottageId);
     final members = await _memberService.getActiveMembers(profile.cottageId);
     final expenses = await _utilityService.getExpenses(monthKey);
-    final deposits = await _utilityService.getDeposits(profile.cottageId, monthKey);
+    final deposits = await _utilityService.getDeposits(
+      profile.cottageId,
+      monthKey,
+    );
 
     return _UtilityData(
       profile: profile,
@@ -106,7 +115,20 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   static String _drawerDate(DateTime d) {
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     return '${d.day} ${months[d.month - 1]}, ${d.year}';
   }
 
@@ -138,28 +160,43 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                     firstDate: DateTime(selectedDate.year - 1),
                     lastDate: DateTime.now(),
                   );
-                  if (picked != null) setSheetState(() => selectedDate = picked);
+                  if (picked != null)
+                    setSheetState(() => selectedDate = picked);
                 },
               ),
             ),
             _DrawerField(
               label: 'Category',
-              child: _DrawerTextField(controller: categoryCtrl, hint: 'e.g. Electricity, Internet, Gas'),
+              child: _DrawerTextField(
+                controller: categoryCtrl,
+                hint: 'e.g. Electricity, Internet, Gas',
+              ),
             ),
             _DrawerField(
               label: 'Description',
-              child: _DrawerTextField(controller: descCtrl, hint: 'July electricity bill payment'),
+              child: _DrawerTextField(
+                controller: descCtrl,
+                hint: 'July electricity bill payment',
+              ),
             ),
             _DrawerField(
               label: 'Payment Source',
-              child: _DrawerTextField(controller: paymentSourceCtrl, hint: 'Cottage Balance'),
+              child: _DrawerTextField(
+                controller: paymentSourceCtrl,
+                hint: 'Cottage Balance',
+              ),
             ),
-            _DrawerField(label: 'Total Amount', child: _DrawerAmountField(controller: amountCtrl)),
+            _DrawerField(
+              label: 'Total Amount',
+              child: _DrawerAmountField(controller: amountCtrl),
+            ),
             _DrawerSaveButton(
               label: 'Save Expense',
               onTap: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (amount <= 0 || categoryCtrl.text.trim().isEmpty || descCtrl.text.trim().isEmpty) {
+                if (amount <= 0 ||
+                    categoryCtrl.text.trim().isEmpty ||
+                    descCtrl.text.trim().isEmpty) {
                   showToast(ctx, 'Please fill in all required fields.');
                   return;
                 }
@@ -170,7 +207,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                   expenseDate: _isoDate(selectedDate),
                   description: descCtrl.text.trim(),
                   category: categoryCtrl.text.trim(),
-                  paymentSource: paymentSourceCtrl.text.trim().isEmpty ? 'Cottage Balance' : paymentSourceCtrl.text.trim(),
+                  paymentSource: paymentSourceCtrl.text.trim().isEmpty
+                      ? 'Cottage Balance'
+                      : paymentSourceCtrl.text.trim(),
                 );
                 _refresh();
               },
@@ -194,7 +233,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) => _UtilityDrawer(
           icon: Icons.account_balance_wallet_outlined,
-          title: sourceType == 'member' ? 'Add Member Deposit' : 'Add Cottage Deposit',
+          title: sourceType == 'member'
+              ? 'Add Member Deposit'
+              : 'Add Cottage Deposit',
           children: [
             if (sourceType == 'member')
               _DrawerField(
@@ -204,7 +245,8 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                   isPlaceholder: selectedMember == null,
                   onTap: () async {
                     final picked = await _pickMember(ctx, data.members);
-                    if (picked != null) setSheetState(() => selectedMember = picked);
+                    if (picked != null)
+                      setSheetState(() => selectedMember = picked);
                   },
                 ),
               ),
@@ -219,7 +261,8 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                     firstDate: DateTime(selectedDate.year - 1),
                     lastDate: DateTime.now(),
                   );
-                  if (picked != null) setSheetState(() => selectedDate = picked);
+                  if (picked != null)
+                    setSheetState(() => selectedDate = picked);
                 },
               ),
             ),
@@ -227,15 +270,22 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
               label: 'Description',
               child: _DrawerTextField(
                 controller: descCtrl,
-                hint: sourceType == 'member' ? 'Cash for July utility bill' : 'Prepaid by cottage fund for July electricity',
+                hint: sourceType == 'member'
+                    ? 'Cash for July utility bill'
+                    : 'Prepaid by cottage fund for July electricity',
               ),
             ),
-            _DrawerField(label: 'Total Amount', child: _DrawerAmountField(controller: amountCtrl)),
+            _DrawerField(
+              label: 'Total Amount',
+              child: _DrawerAmountField(controller: amountCtrl),
+            ),
             _DrawerSaveButton(
               label: 'Save Deposit',
               onTap: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
-                if (amount <= 0 || descCtrl.text.trim().isEmpty || (sourceType == 'member' && selectedMember == null)) {
+                if (amount <= 0 ||
+                    descCtrl.text.trim().isEmpty ||
+                    (sourceType == 'member' && selectedMember == null)) {
                   showToast(ctx, 'Please fill in all required fields.');
                   return;
                 }
@@ -260,7 +310,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
   Future<Profile?> _pickMember(BuildContext context, List<Profile> members) {
     return showModalBottomSheet<Profile>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -283,8 +335,18 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
       final year = parts[0];
       final monthInt = int.tryParse(parts[1]) ?? 1;
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       if (monthInt < 1 || monthInt > 12) return monthKey;
       return '${months[monthInt - 1]} $year';
@@ -376,7 +438,11 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, size: 40, color: CottageColors.destructive),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Could not load utilities.\n${snapshot.error}',
@@ -384,7 +450,10 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                       style: TextStyle(color: surface.foreground),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _refresh, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
@@ -394,8 +463,12 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
 
         final data = snapshot.data!;
         _currentData = data;
-        final memberDeposits = data.deposits.where((d) => d.isMemberDeposit).toList();
-        final cottageDeposits = data.deposits.where((d) => !d.isMemberDeposit).toList();
+        final memberDeposits = data.deposits
+            .where((d) => d.isMemberDeposit)
+            .toList();
+        final cottageDeposits = data.deposits
+            .where((d) => !d.isMemberDeposit)
+            .toList();
 
         return Scaffold(
           backgroundColor: CottageColors.primary,
@@ -404,20 +477,39 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.fromLTRB(context.responsivePadding, 8, context.responsivePadding, 16),
+                  padding: EdgeInsets.fromLTRB(
+                    context.responsivePadding,
+                    8,
+                    context.responsivePadding,
+                    16,
+                  ),
                   child: Row(
                     children: [
                       const Text(
                         'Utility Details',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: 11), // Figma: gap-11
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(36)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(36),
+                        ),
                         child: Text(
                           _formatMonth(data.monthKey),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: CottageColors.primary),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: CottageColors.primary,
+                          ),
                         ),
                       ),
                     ],
@@ -428,42 +520,74 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: surface.card,
-                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: EdgeInsets.fromLTRB(context.responsivePadding, 24, context.responsivePadding, 0),
+                          padding: EdgeInsets.fromLTRB(
+                            context.responsivePadding,
+                            24,
+                            context.responsivePadding,
+                            0,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
                                 'Read-only record of every utility expense and deposit. No calculations happen here.',
-                                style: TextStyle(fontSize: 14, color: Color(0xFF303030)),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF303030),
+                                ),
                               ),
                               const SizedBox(height: 16),
                               GestureDetector(
-                                onTap: () => showToast(context, 'Summary report downloaded successfully'),
+                                onTap: () => showToast(
+                                  context,
+                                  'Summary report downloaded successfully',
+                                ),
                                 child: Container(
                                   height: 40,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    border: Border.all(color: _UtilityColors.border),
+                                    border: Border.all(
+                                      color: _UtilityColors.border,
+                                    ),
                                     borderRadius: BorderRadius.circular(1000),
                                     boxShadow: [
-                                      BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 2, offset: const Offset(0, 1)),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.06,
+                                        ),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
                                     ],
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.download_rounded, size: 20, color: _UtilityColors.darkText),
+                                      const Icon(
+                                        Icons.download_rounded,
+                                        size: 20,
+                                        color: _UtilityColors.darkText,
+                                      ),
                                       const SizedBox(width: 8),
                                       const Text(
                                         'Download',
-                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _UtilityColors.darkText),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: _UtilityColors.darkText,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -479,9 +603,18 @@ class _UtilitiesScreenState extends State<UtilitiesScreen> with SingleTickerProv
                           child: TabBarView(
                             controller: _tabController,
                             children: [
-                              _ExpenseTab(expenses: data.expenses, onRefresh: _refresh),
-                              _MemberDepositTab(deposits: memberDeposits, onRefresh: _refresh),
-                              _CottageDepositTab(deposits: cottageDeposits, onRefresh: _refresh),
+                              _ExpenseTab(
+                                expenses: data.expenses,
+                                onRefresh: _refresh,
+                              ),
+                              _MemberDepositTab(
+                                deposits: memberDeposits,
+                                onRefresh: _refresh,
+                              ),
+                              _CottageDepositTab(
+                                deposits: cottageDeposits,
+                                onRefresh: _refresh,
+                              ),
                             ],
                           ),
                         ),
@@ -524,7 +657,11 @@ class _UtilityDrawer extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _UtilityDrawer({required this.icon, required this.title, required this.children});
+  const _UtilityDrawer({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -541,7 +678,11 @@ class _UtilityDrawer extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _UtilityColors.headingText),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: _UtilityColors.headingText,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -550,16 +691,20 @@ class _UtilityDrawer extends StatelessWidget {
                   width: 28,
                   height: 28,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: _UtilityColors.fieldBg, borderRadius: BorderRadius.circular(14)),
-                  child: const Icon(Icons.close, size: 16, color: _UtilityColors.headingText),
+                  decoration: BoxDecoration(
+                    color: _UtilityColors.fieldBg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: _UtilityColors.headingText,
+                  ),
                 ),
               ),
             ],
           ),
-          for (final child in children) ...[
-            const SizedBox(height: 16),
-            child,
-          ],
+          for (final child in children) ...[const SizedBox(height: 16), child],
         ],
       ),
     );
@@ -578,9 +723,21 @@ class _DrawerField extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: _UtilityColors.darkText,
+              ),
+            ),
             const SizedBox(width: 2),
-            const Text('*', style: TextStyle(fontSize: 13, color: _UtilityColors.requiredMark)),
+            const Text(
+              '*',
+              style: TextStyle(
+                fontSize: 13,
+                color: _UtilityColors.requiredMark,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -613,7 +770,10 @@ class _DrawerTextField extends StatelessWidget {
       style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(fontSize: 13, color: _UtilityColors.placeholder),
+        hintStyle: const TextStyle(
+          fontSize: 13,
+          color: _UtilityColors.placeholder,
+        ),
         filled: false,
         border: InputBorder.none,
         isDense: true,
@@ -630,7 +790,11 @@ class _DrawerTapField extends StatelessWidget {
   final bool isPlaceholder;
   final VoidCallback onTap;
 
-  const _DrawerTapField({required this.value, this.isPlaceholder = false, required this.onTap});
+  const _DrawerTapField({
+    required this.value,
+    this.isPlaceholder = false,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -639,7 +803,12 @@ class _DrawerTapField extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Text(
         value,
-        style: TextStyle(fontSize: 13, color: isPlaceholder ? _UtilityColors.placeholder : _UtilityColors.darkText),
+        style: TextStyle(
+          fontSize: 13,
+          color: isPlaceholder
+              ? _UtilityColors.placeholder
+              : _UtilityColors.darkText,
+        ),
       ),
     );
   }
@@ -653,16 +822,29 @@ class _DrawerAmountField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text('৳', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _UtilityColors.placeholder)),
+        const Text(
+          '৳',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: _UtilityColors.placeholder,
+          ),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+            style: const TextStyle(
+              fontSize: 13,
+              color: _UtilityColors.darkText,
+            ),
             decoration: const InputDecoration(
               hintText: '0.00',
-              hintStyle: TextStyle(fontSize: 13, color: _UtilityColors.placeholder),
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: _UtilityColors.placeholder,
+              ),
               filled: false,
               border: InputBorder.none,
               isDense: true,
@@ -688,8 +870,18 @@ class _DrawerSaveButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 13),
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: _UtilityColors.saveButton, borderRadius: BorderRadius.circular(999)),
-        child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+        decoration: BoxDecoration(
+          color: _UtilityColors.saveButton,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
@@ -698,7 +890,20 @@ class _DrawerSaveButton extends StatelessWidget {
 String _formatCardDate(String isoDate) {
   try {
     final d = DateTime.parse(isoDate);
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     return '${d.day} ${months[d.month - 1]}, ${d.year}';
   } catch (_) {
     return isoDate;
@@ -736,11 +941,17 @@ class _UtilityCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: _UtilityColors.fieldBg,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _UtilityColors.border, width: 0.8),
+                    border: Border.all(
+                      color: _UtilityColors.border,
+                      width: 0.8,
+                    ),
                   ),
                   child: Text(
                     _formatCardDate(date),
-                    style: const TextStyle(fontSize: 14, color: _UtilityColors.darkText),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: _UtilityColors.darkText,
+                    ),
                   ),
                 ),
               ),
@@ -754,9 +965,16 @@ class _UtilityCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: _UtilityColors.fieldBg,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _UtilityColors.border, width: 0.8),
+                    border: Border.all(
+                      color: _UtilityColors.border,
+                      width: 0.8,
+                    ),
                   ),
-                  child: const Icon(Icons.edit_outlined, size: 18, color: CottageColors.primary),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: CottageColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -777,7 +995,11 @@ class _UtilityInfoRow extends StatelessWidget {
   final String value;
   final bool boldValue;
 
-  const _UtilityInfoRow({required this.label, required this.value, this.boldValue = false});
+  const _UtilityInfoRow({
+    required this.label,
+    required this.value,
+    this.boldValue = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -791,10 +1013,17 @@ class _UtilityInfoRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: CottageColors.primary)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: CottageColors.primary),
+          ),
           Expanded(
             child: Center(
-              child: Container(width: 1, height: 21, color: _UtilityColors.border),
+              child: Container(
+                width: 1,
+                height: 21,
+                color: _UtilityColors.border,
+              ),
             ),
           ),
           Text(
@@ -827,7 +1056,10 @@ class _UtilityNoteRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: _UtilityColors.border, width: 0.8),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 14, color: _UtilityColors.placeholder)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, color: _UtilityColors.placeholder),
+      ),
     );
   }
 }
@@ -853,45 +1085,79 @@ class _ExpenseTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.separated(
-        padding: EdgeInsets.fromLTRB(context.responsivePadding, 0, context.responsivePadding, 96),
+        padding: EdgeInsets.fromLTRB(
+          context.responsivePadding,
+          0,
+          context.responsivePadding,
+          96,
+        ),
         itemCount: expenses.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final e = expenses[index];
           String title = e.category ?? 'Other';
-          title = title.isEmpty ? 'Other' : title[0].toUpperCase() + title.substring(1);
+          title = title.isEmpty
+              ? 'Other'
+              : title[0].toUpperCase() + title.substring(1);
           if (title == 'House_rent') title = 'House Rent';
 
           return _UtilityCard(
             date: e.expenseDate,
-            onEdit: () => showToast(context, 'Editing expenses is coming in a future update'),
+            onEdit: () => showToast(
+              context,
+              'Editing expenses is coming in a future update',
+            ),
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: _UtilityColors.highlightBg,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _UtilityColors.border, width: 0.8),
+                    border: Border.all(
+                      color: _UtilityColors.border,
+                      width: 0.8,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 12, color: CottageColors.primary)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: CottageColors.primary,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
-                        (e.description?.isNotEmpty ?? false) ? e.description! : title,
-                        style: const TextStyle(fontSize: 14, color: _UtilityColors.darkText),
+                        (e.description?.isNotEmpty ?? false)
+                            ? e.description!
+                            : title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: _UtilityColors.darkText,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
-                _UtilityInfoRow(label: 'Payment Source', value: e.paymentSource ?? 'Cottage Balance'),
+                _UtilityInfoRow(
+                  label: 'Payment Source',
+                  value: e.paymentSource ?? 'Cottage Balance',
+                ),
                 const SizedBox(height: 4),
-                _UtilityInfoRow(label: 'Total Amount', value: e.amount.toStringAsFixed(0), boldValue: true),
+                _UtilityInfoRow(
+                  label: 'Total Amount',
+                  value: e.amount.toStringAsFixed(0),
+                  boldValue: true,
+                ),
               ],
             ),
           );
@@ -922,46 +1188,72 @@ class _MemberDepositTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.separated(
-        padding: EdgeInsets.fromLTRB(context.responsivePadding, 0, context.responsivePadding, 96),
+        padding: EdgeInsets.fromLTRB(
+          context.responsivePadding,
+          0,
+          context.responsivePadding,
+          96,
+        ),
         itemCount: deposits.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final d = deposits[index];
           final name = d.memberName ?? 'Member';
-          final createdAt = d.createdAt?.toIso8601String().substring(0, 10) ?? '';
+          final createdAt =
+              d.createdAt?.toIso8601String().substring(0, 10) ?? '';
 
           return _UtilityCard(
             date: createdAt,
-            onEdit: () => showToast(context, 'Editing deposits is coming in a future update'),
+            onEdit: () => showToast(
+              context,
+              'Editing deposits is coming in a future update',
+            ),
             content: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
                   width: 109,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _UtilityColors.fieldBg,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _UtilityColors.border, width: 0.8),
+                    border: Border.all(
+                      color: _UtilityColors.border,
+                      width: 0.8,
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircleAvatar(
                         radius: 13.5,
-                        backgroundColor: CottageColors.primary.withValues(alpha: 0.1),
-                        backgroundImage: (d.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(d.avatarUrl!) : null,
+                        backgroundColor: CottageColors.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        backgroundImage: (d.avatarUrl?.isNotEmpty ?? false)
+                            ? NetworkImage(d.avatarUrl!)
+                            : null,
                         child: (d.avatarUrl?.isNotEmpty ?? false)
                             ? null
                             : Text(
                                 name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                style: const TextStyle(color: CottageColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
+                                style: const TextStyle(
+                                  color: CottageColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         name,
-                        style: const TextStyle(fontSize: 12, color: CottageColors.primary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: CottageColors.primary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -974,9 +1266,17 @@ class _MemberDepositTab extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _UtilityNoteRow((d.note?.isNotEmpty ?? false) ? d.note! : 'No notes detailed'),
+                      _UtilityNoteRow(
+                        (d.note?.isNotEmpty ?? false)
+                            ? d.note!
+                            : 'No notes detailed',
+                      ),
                       const SizedBox(height: 4),
-                      _UtilityInfoRow(label: 'Total Amount', value: d.amount.toStringAsFixed(0), boldValue: true),
+                      _UtilityInfoRow(
+                        label: 'Total Amount',
+                        value: d.amount.toStringAsFixed(0),
+                        boldValue: true,
+                      ),
                     ],
                   ),
                 ),
@@ -1010,22 +1310,37 @@ class _CottageDepositTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.separated(
-        padding: EdgeInsets.fromLTRB(context.responsivePadding, 0, context.responsivePadding, 96),
+        padding: EdgeInsets.fromLTRB(
+          context.responsivePadding,
+          0,
+          context.responsivePadding,
+          96,
+        ),
         itemCount: deposits.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final d = deposits[index];
-          final createdAt = d.createdAt?.toIso8601String().substring(0, 10) ?? '';
+          final createdAt =
+              d.createdAt?.toIso8601String().substring(0, 10) ?? '';
 
           return _UtilityCard(
             date: createdAt,
-            onEdit: () => showToast(context, 'Editing deposits is coming in a future update'),
+            onEdit: () => showToast(
+              context,
+              'Editing deposits is coming in a future update',
+            ),
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _UtilityNoteRow((d.note?.isNotEmpty ?? false) ? d.note! : 'No notes detailed'),
+                _UtilityNoteRow(
+                  (d.note?.isNotEmpty ?? false) ? d.note! : 'No notes detailed',
+                ),
                 const SizedBox(height: 4),
-                _UtilityInfoRow(label: 'Total Amount', value: d.amount.toStringAsFixed(0), boldValue: true),
+                _UtilityInfoRow(
+                  label: 'Total Amount',
+                  value: d.amount.toStringAsFixed(0),
+                  boldValue: true,
+                ),
               ],
             ),
           );

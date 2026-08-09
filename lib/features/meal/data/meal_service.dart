@@ -19,12 +19,17 @@ class MealService {
   }
 
   /// Add or update a meal count for a member on a specific date.
+  ///
+  /// [createdBy] must be the *acting* member's own id -- `daily_meals.
+  /// created_by` is `not null` and its RLS insert policy requires
+  /// `created_by = auth.uid()`, so omitting it makes every upsert fail.
   Future<void> upsertMeal({
     required String userId,
     required String monthKey,
     required String date,
     required double count,
     required String cottageId,
+    required String createdBy,
   }) async {
     await _client.from('daily_meals').upsert({
       'user_id': userId,
@@ -32,6 +37,7 @@ class MealService {
       'meal_date': date,
       'count': count,
       'cottage_id': cottageId,
+      'created_by': createdBy,
     }, onConflict: 'user_id,meal_date');
   }
 

@@ -120,10 +120,11 @@ class _LoginScreenState extends State<LoginScreen> {
         redirectTo: SupabaseService.oauthRedirectUrl,
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _loginError = 'Google sign-in failed. Please try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _loginGoogleSubmitting = false);
     }
@@ -193,10 +194,11 @@ class _LoginScreenState extends State<LoginScreen> {
         redirectTo: SupabaseService.oauthRedirectUrl,
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _signupError = 'Google sign-in failed. Please try again.',
         );
+      }
     } finally {
       if (mounted) setState(() => _signupGoogleSubmitting = false);
     }
@@ -554,8 +556,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               autofillHints: const [AutofillHints.newPassword],
                               textInputAction: TextInputAction.next,
                               validator: (value) {
-                                if (value == null || value.isEmpty)
+                                if (value == null || value.isEmpty) {
                                   return 'Required';
+                                }
                                 if (value.length < 8) return 'Min 8 characters';
                                 return null;
                               },

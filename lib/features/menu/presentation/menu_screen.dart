@@ -9,6 +9,7 @@ import 'package:cottage/common_widgets/confirm_modal.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../../contacts/presentation/contacts_screen.dart';
+import '../../months/presentation/months_screen.dart';
 import 'members_screen.dart';
 
 /// Settings / profile screen — profile card, cottage info, navigation menu,
@@ -44,9 +45,12 @@ class _MenuScreenState extends State<MenuScreen> {
         context,
         MaterialPageRoute(builder: (_) => const ContactsScreen()),
       );
-    } else if (action == 'settings' ||
-        action == 'months' ||
-        action == 'feedback') {
+    } else if (action == 'months') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MonthsScreen()),
+      );
+    } else if (action == 'settings' || action == 'feedback') {
       showToast(
         context,
         '${action[0].toUpperCase()}${action.substring(1)} coming in a future update',

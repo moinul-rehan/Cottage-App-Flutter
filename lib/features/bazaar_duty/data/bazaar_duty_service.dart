@@ -7,18 +7,25 @@ import 'package:cottage/helpers/supabase_service.dart';
 class BazaarDutyService {
   final _client = SupabaseService.client;
 
-  /// Flat, sorted list of every upcoming/current duty in the cottage -- for
-  /// the Dashboard's shared roster. Mirrors getCottageBazaarDuties.
-  Future<List<BazaarDuty>> getCottageBazaarDuties(String cottageId, {int limit = 8}) async {
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+  /// Flat, sorted list of every assigned duty in the cottage -- past,
+  /// current, and upcoming -- for the Dashboard's shared roster and the
+  /// Member Summary cards. Previously filtered to `end_date >= today`,
+  /// which made a member's duty vanish from both the roster and their
+  /// summary card the moment it ended instead of just no longer being
+  /// highlighted as active; every assigned duty should stay visible.
+  Future<List<BazaarDuty>> getCottageBazaarDuties(
+    String cottageId, {
+    int limit = 100,
+  }) async {
     final rows = await _client
         .from('bazaar_duties')
         .select('id, user_id, start_date, end_date, note')
         .eq('cottage_id', cottageId)
-        .gte('end_date', today)
-        .order('start_date')
+        .order('start_date', ascending: false)
         .limit(limit);
-    return (rows as List).map((r) => BazaarDuty.fromMap(r as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((r) => BazaarDuty.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   /// Every duty (past and upcoming) in the cottage, newest-starting first --
@@ -30,17 +37,26 @@ class BazaarDutyService {
         .select('id, user_id, start_date, end_date, note')
         .eq('cottage_id', cottageId)
         .order('start_date', ascending: false);
-    return (rows as List).map((r) => BazaarDuty.fromMap(r as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((r) => BazaarDuty.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   /// Assign a new bazaar duty. Callers should check [bazaarDutyOverlaps]
   /// against [getAllBazaarDuties] first, mirroring the web's overlap
   /// prevention (commit 3c5aefa).
+  ///
+  /// [createdBy] must be the *acting* super admin's own id (not [userId],
+  /// the person being assigned) -- `bazaar_duties.created_by` is `not null`
+  /// and RLS's `bazaar_duties_admin_insert` policy requires
+  /// `created_by = auth.uid()`, so omitting it makes every insert fail
+  /// (silently, if the caller doesn't check for an exception).
   Future<void> assignDuty({
     required String cottageId,
     required String userId,
     required String startDate,
     required String endDate,
+    required String createdBy,
     String? note,
   }) async {
     await _client.from('bazaar_duties').insert({
@@ -48,6 +64,7 @@ class BazaarDutyService {
       'user_id': userId,
       'start_date': startDate,
       'end_date': endDate,
+      'created_by': createdBy,
       if (note != null && note.isNotEmpty) 'note': note,
     });
   }
@@ -59,11 +76,14 @@ class BazaarDutyService {
     required String endDate,
     String? note,
   }) async {
-    await _client.from('bazaar_duties').update({
-      'start_date': startDate,
-      'end_date': endDate,
-      'note': note ?? '',
-    }).eq('id', id);
+    await _client
+        .from('bazaar_duties')
+        .update({
+          'start_date': startDate,
+          'end_date': endDate,
+          'note': note ?? '',
+        })
+        .eq('id', id);
   }
 
   /// Remove a duty assignment.

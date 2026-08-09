@@ -25,12 +25,12 @@ Future<T?> showCottageSheet<T>({
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+    ),
     builder: (ctx) {
       return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(ctx).bottom,
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -68,7 +68,11 @@ class CottageSheetContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
-    return Padding(
+    // Scrollable so a sheet with more fields than fit the available height
+    // (e.g. the keyboard covering half the screen) scrolls instead of
+    // overflowing -- [showCottageSheet] only caps the sheet's max height,
+    // it doesn't make its content scrollable on its own.
+    return SingleChildScrollView(
       padding: padding,
       child: Column(
         mainAxisSize: MainAxisSize.min,

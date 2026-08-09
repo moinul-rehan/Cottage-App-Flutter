@@ -58,6 +58,10 @@ dependencies:
   # Persists whether the first-launch onboarding carousel has been seen.
   shared_preferences: ^2.3.3
 
+  # Material motion transitions (FadeScaleTransition) for popup modals --
+  # see common_widgets/confirm_modal.dart.
+  animations: ^2.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

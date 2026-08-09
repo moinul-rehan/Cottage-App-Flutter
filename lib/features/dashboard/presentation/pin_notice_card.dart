@@ -36,54 +36,60 @@ class _PinNoticeCardState extends State<PinNoticeCard> {
   Future<Notice?> _load() async {
     final notices = await _service.getNotices(widget.profile.cottageId);
     final visible = notices.where(
-      (n) => n.visibleTo(profileId: widget.profile.id, isSuperAdmin: widget.profile.isSuperAdmin),
+      (n) => n.visibleTo(
+        profileId: widget.profile.id,
+        isSuperAdmin: widget.profile.isSuperAdmin,
+      ),
     );
-    final pinned = visible.where((n) => n.status == NoticeStatus.published && n.effectivelyPinned).toList();
+    final pinned = visible
+        .where((n) => n.status == NoticeStatus.published && n.effectivelyPinned)
+        .toList();
     final sorted = sortNoticesForDisplay(pinned);
     return sorted.isEmpty ? null : sorted.first;
   }
 
-  void _openNotices() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NoticesScreen()));
+  void _openNotices() => Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const NoticesScreen()));
 
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    // Whole section (title included) only exists when there's something to
+    // show -- no title-plus-empty-placeholder while loading or when there's
+    // no pinned notice, since that just reads as a permanently-broken card.
+    return FutureBuilder<Notice?>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        final notice = snapshot.data;
+        if (notice == null) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('📌', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 8),
-            Text('Pin Notice', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: surface.foreground)),
+            Row(
+              children: [
+                const Text('📌', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 8),
+                Text(
+                  'Pin Notice',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: surface.foreground,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _StickyNote(notice: notice, onTap: _openNotices),
           ],
-        ),
-        const SizedBox(height: 14),
-        FutureBuilder<Notice?>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const SizedBox(height: 140, child: Center(child: CircularProgressIndicator()));
-            }
-            final notice = snapshot.data;
-            if (notice == null) {
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: surface.muted.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: surface.border),
-                ),
-                child: Center(
-                  child: Text('No pinned notices right now.', style: TextStyle(color: surface.mutedForeground, fontSize: 13)),
-                ),
-              );
-            }
-            return _StickyNote(notice: notice, onTap: _openNotices);
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -123,7 +129,10 @@ class _StickyNote extends StatelessWidget {
             children: [
               // Darker pink header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF9A8DF),
                   borderRadius: BorderRadius.only(
@@ -133,7 +142,11 @@ class _StickyNote extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.campaign_outlined, size: 20, color: Color(0xFF1E1E1E)),
+                    const Icon(
+                      Icons.campaign_outlined,
+                      size: 20,
+                      color: Color(0xFF1E1E1E),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       meta.label,
@@ -164,13 +177,22 @@ class _StickyNote extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      notice.description.isNotEmpty ? notice.description : 'Write your Notice here',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF1E1E1E)),
+                      notice.description.isNotEmpty
+                          ? notice.description
+                          : 'Write your Notice here',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF1E1E1E),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     Text(
                       '${priorityMeta.label} · Cottage · published ${_fmt(notice.publishAt)}\nExpires ${_fmt(notice.expiresAt)}',
-                      style: const TextStyle(fontSize: 13, height: 1.4, color: Color(0xBF1E1E1E)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: Color(0xBF1E1E1E),
+                      ),
                     ),
                   ],
                 ),
