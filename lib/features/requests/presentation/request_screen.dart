@@ -383,7 +383,7 @@ class _RequestScreenState extends State<RequestScreen>
                 context.responsivePadding,
                 16,
                 context.responsivePadding,
-                96,
+                24 + MediaQuery.paddingOf(context).bottom,
               ),
               children: [
                 for (final r in meals)

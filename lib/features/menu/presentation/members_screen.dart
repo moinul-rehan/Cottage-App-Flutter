@@ -573,7 +573,7 @@ class _MembersScreenState extends State<MembersScreen>
                           context.responsivePadding,
                           20,
                           context.responsivePadding,
-                          96,
+                          24 + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
                           for (final member in data.members)
@@ -1032,25 +1032,19 @@ class _MemberCard extends StatelessWidget {
           ],
           if (canManage || canAssignDuty) ...[
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (canManage) ...[
+                if (canManage)
                   _ActionPill(
                     label: 'Permissions',
                     trailingIcon: Icons.keyboard_arrow_down_rounded,
                     onTap: onPermissions,
                   ),
-                  const SizedBox(width: 8),
-                ],
                 if (canAssignDuty)
                   _ActionPill(label: 'Assign Duty', onTap: onAssignDuty),
-                const Spacer(),
-                // A super admin target can only ever be toggled active/
-                // inactive -- never removed, regardless of state. A
-                // general member shows a single Deactivate while active;
-                // once inactive, both Activate and Remove appear side by
-                // side (removal is only reachable via that inactive state,
-                // matching MemberService.removeMember's own guardrail).
                 if (canManage && member.isSuperAdmin)
                   _ToggleActiveLabel(
                     isActive: member.isActive,
@@ -1060,7 +1054,6 @@ class _MemberCard extends StatelessWidget {
                   _ToggleActiveLabel(isActive: true, onTap: onToggleActive)
                 else if (canManage) ...[
                   _ToggleActiveLabel(isActive: false, onTap: onToggleActive),
-                  const SizedBox(width: 16),
                   GestureDetector(
                     onTap: onRemove,
                     child: const Text(

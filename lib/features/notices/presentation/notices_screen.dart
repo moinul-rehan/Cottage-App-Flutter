@@ -695,7 +695,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                 context.responsivePadding,
                 20,
                 context.responsivePadding,
-                96,
+                24 + MediaQuery.paddingOf(context).bottom,
               ),
               children: children,
             ),

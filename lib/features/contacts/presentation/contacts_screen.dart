@@ -373,7 +373,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                           context.responsivePadding,
                           24,
                           context.responsivePadding,
-                          96,
+                          24 + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: [
                           const Text(

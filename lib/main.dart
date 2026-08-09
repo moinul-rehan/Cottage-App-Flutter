@@ -89,6 +89,7 @@ class _CottageAppState extends State<CottageApp> {
           darkTheme: buildCottageTheme(Brightness.dark),
           themeMode: mode,
           debugShowCheckedModeBanner: false,
+          scrollBehavior: const CottageScrollBehavior(),
           home: !SupabaseService.isInitialized
               ? _SupabaseErrorScreen(error: SupabaseService.initializationError)
               : AnimatedSwitcher(
@@ -247,6 +248,18 @@ class _SupabaseErrorScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Common global scroll behavior enforcing responsive bouncing and overscroll elasticity across all screens.
+class CottageScrollBehavior extends MaterialScrollBehavior {
+  const CottageScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
     );
   }
 }
