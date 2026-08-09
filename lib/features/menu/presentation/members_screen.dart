@@ -451,7 +451,7 @@ class _MembersScreenState extends State<MembersScreen>
                       roomLabel: room,
                     );
 
-                    if (!mounted) return;
+                    if (!mounted || !sheetContext.mounted) return;
 
                     if (result == InviteMemberResult.added) {
                       Navigator.pop(sheetContext);
@@ -466,7 +466,9 @@ class _MembersScreenState extends State<MembersScreen>
                       return;
                     }
                   } catch (e) {
-                    showToast(sheetContext, 'Could not add member: $e');
+                    if (sheetContext.mounted) {
+                      showToast(sheetContext, 'Could not add member: $e');
+                    }
                     return;
                   }
 
@@ -491,7 +493,7 @@ class _MembersScreenState extends State<MembersScreen>
                     query:
                         'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body.toString())}',
                   );
-                  Navigator.pop(sheetContext);
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri);
                   } else if (mounted) {
