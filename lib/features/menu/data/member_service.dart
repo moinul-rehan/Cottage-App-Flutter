@@ -207,8 +207,10 @@ class MemberService {
     return InviteMemberResult.added;
   }
 
-  /// Triggers a backend invitation email via Supabase Functions or auth workflow.
-  Future<void> sendBackendInvite({
+  /// Triggers a backend invitation email via Supabase Functions.
+  /// Returns [true] if the backend Edge Function exists and succeeds,
+  /// or [false] if not configured / failed.
+  Future<bool> sendBackendInvite({
     required String cottageId,
     required String email,
     required String firstName,
@@ -217,7 +219,7 @@ class MemberService {
     String? roomLabel,
   }) async {
     try {
-      await _client.functions.invoke(
+      final res = await _client.functions.invoke(
         'send-invite',
         body: {
           'email': email.trim().toLowerCase(),
@@ -228,8 +230,9 @@ class MemberService {
           'room_label': roomLabel,
         },
       );
+      return res.status == 200 || res.status == 201;
     } catch (_) {
-      // Backend function fallback / silent handling
+      return false;
     }
   }
 }

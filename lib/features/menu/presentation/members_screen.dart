@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cottage/models/profile.dart';
 import '../data/member_service.dart';
 import '../../dashboard/data/dashboard_service.dart';
@@ -592,7 +593,8 @@ class _MembersScreenState extends State<MembersScreen>
                           final room = roomCtrl.text.trim();
 
                           setSheetState(() => isChecking = true);
-                          await _memberService.sendBackendInvite(
+                          final sentViaBackend =
+                              await _memberService.sendBackendInvite(
                             cottageId: viewer.cottageId,
                             email: email,
                             firstName: firstName,
@@ -604,11 +606,45 @@ class _MembersScreenState extends State<MembersScreen>
                           if (sheetContext.mounted) {
                             Navigator.pop(sheetContext);
                           }
-                          if (mounted) {
-                            showToast(
-                              context,
-                              'Invite sent to $email!',
+
+                          if (sentViaBackend) {
+                            if (mounted) {
+                              showToast(
+                                context,
+                                'Invite email sent to $email!',
+                              );
+                            }
+                          } else {
+                            final subject =
+                                "You're invited to join $cottageName on Cottage";
+                            final body = StringBuffer()
+                              ..writeln(
+                                'Hi $firstName${lastName.isEmpty ? '' : ' $lastName'},',
+                              )
+                              ..writeln()
+                              ..writeln(
+                                '${viewer.displayName} has invited you to join "$cottageName" on Cottage as a ${role == 'super_admin' ? 'Super Admin' : 'Member'}${room.isEmpty ? '' : ' ($room)'}.',
+                              )
+                              ..writeln()
+                              ..writeln(
+                                'Download the Cottage app, sign up, and you\'ll be automatically added to the cottage.',
+                              );
+
+                            final uri = Uri(
+                              scheme: 'mailto',
+                              path: email,
+                              query:
+                                  'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body.toString())}',
                             );
+
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri);
+                            } else if (mounted) {
+                              showToast(
+                                context,
+                                'Backend invite function not configured and could not open mail app.',
+                              );
+                            }
                           }
                         }
                       },
