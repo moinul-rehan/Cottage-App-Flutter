@@ -245,7 +245,7 @@ class MemberService {
     String? lastError;
 
     try {
-      final response = await http.post(
+      var response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -253,6 +253,29 @@ class MemberService {
         },
         body: jsonEncode(bodyData),
       );
+
+      // Handle HTTP 307 / 308 redirects from Next.js / Vercel
+      if ((response.statusCode == 307 || response.statusCode == 308) &&
+          response.headers.containsKey('location')) {
+        final redirectLocation = response.headers['location']!;
+        final redirectUrl = Uri.parse(
+          redirectLocation.startsWith('http')
+              ? redirectLocation
+              : '$baseUrl$redirectLocation',
+        );
+        debugPrint(
+          'Next.js API returned status ${response.statusCode}. Automatically redirecting POST to $redirectUrl',
+        );
+
+        response = await http.post(
+          redirectUrl,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(bodyData),
+        );
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         debugPrint('Next.js /api/members/invite succeeded: ${response.body}');
