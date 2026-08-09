@@ -85,11 +85,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
     if (!confirmed) return;
     await SupabaseService.signOut();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
+    NavigationService.popToRoot();
   }
 
   @override

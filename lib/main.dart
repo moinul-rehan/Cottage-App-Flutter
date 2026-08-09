@@ -154,7 +154,8 @@ class _AuthGateState extends State<_AuthGate> {
       if (state.session != null) {
         NavigationService.popToRoot();
         PushNotificationService.registerToken();
-      } else if (state.event == AuthChangeEvent.signedOut) {
+      } else if (state.event == AuthChangeEvent.signedOut || state.session == null) {
+        NavigationService.popToRoot();
         PushNotificationService.unregisterToken();
       }
     });
