@@ -218,22 +218,27 @@ class MemberService {
     required String role,
     String? roomLabel,
   }) async {
-    try {
-      final res = await _client.functions.invoke(
-        'send-invite',
-        body: {
-          'email': email.trim().toLowerCase(),
-          'cottage_id': cottageId,
-          'first_name': firstName,
-          'last_name': lastName,
-          'role': role,
-          'room_label': roomLabel,
-        },
-      );
-      return res.status == 200 || res.status == 201;
-    } catch (_) {
-      return false;
+    final payload = {
+      'email': email.trim().toLowerCase(),
+      'cottage_id': cottageId,
+      'first_name': firstName,
+      'last_name': lastName,
+      'role': role,
+      'room_label': roomLabel,
+    };
+
+    final functionNames = ['send-invite', 'invite-user', 'invite'];
+    for (final fnName in functionNames) {
+      try {
+        final res = await _client.functions.invoke(fnName, body: payload);
+        if (res.status == 200 || res.status == 201) {
+          return true;
+        }
+      } catch (e) {
+        // Continue trying next function name if function not found or failed
+      }
     }
+    return false;
   }
 }
 
