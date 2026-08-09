@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 
@@ -207,9 +210,8 @@ class MemberService {
     return InviteMemberResult.added;
   }
 
-  /// Triggers a backend invitation email via Supabase Functions.
-  /// Returns [true] if the backend Edge Function exists and succeeds,
-  /// or [false] if not configured / failed.
+  /// Triggers a backend invitation email via Next.js serverless API route `/api/members/invite`.
+  /// Authenticates using the caller's Supabase Access Token in the Authorization Bearer header.
   Future<bool> sendBackendInvite({
     required String cottageId,
     required String email,
@@ -218,6 +220,48 @@ class MemberService {
     required String role,
     String? roomLabel,
   }) async {
+    final token = SupabaseService.currentSession?.accessToken;
+    if (token != null && token.isNotEmpty) {
+      final baseUrl = const String.fromEnvironment(
+        'BACKEND_URL',
+        defaultValue: 'https://cottagee.me',
+      );
+      final url = Uri.parse('$baseUrl/api/members/invite');
+
+      final bodyData = <String, dynamic>{
+        'email': email.trim().toLowerCase(),
+        'first_name': firstName,
+        if (lastName.isNotEmpty) 'last_name': lastName,
+        if (roomLabel != null && roomLabel.isNotEmpty) 'room_label': roomLabel,
+        'role': role,
+      };
+
+      try {
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(bodyData),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          debugPrint('Next.js /api/members/invite succeeded: ${response.body}');
+          return true;
+        } else {
+          debugPrint(
+            'Next.js /api/members/invite returned error status ${response.statusCode}: ${response.body}',
+          );
+        }
+      } catch (e) {
+        debugPrint('Next.js /api/members/invite HTTP exception: $e');
+      }
+    } else {
+      debugPrint('sendBackendInvite warning: Supabase access token is null.');
+    }
+
+    // Fallback: Try Supabase Edge Function endpoints if Next.js API route is not reachable
     final payload = {
       'email': email.trim().toLowerCase(),
       'cottage_id': cottageId,
@@ -232,12 +276,14 @@ class MemberService {
       try {
         final res = await _client.functions.invoke(fnName, body: payload);
         if (res.status == 200 || res.status == 201) {
+          debugPrint('Edge function $fnName succeeded.');
           return true;
         }
       } catch (e) {
-        // Continue trying next function name if function not found or failed
+        debugPrint('Edge function $fnName error: $e');
       }
     }
+
     return false;
   }
 }
