@@ -333,158 +333,317 @@ class _MembersScreenState extends State<MembersScreen>
   /// the device's mail app with the invite details pre-filled; the admin
   /// still has to add the person to the cottage themselves once they sign
   /// up and reach out.
-  void _showInviteSheet(Profile viewer, String cottageName) {
+  void _showAddMemberSheet(Profile viewer, String cottageName) {
     final firstNameCtrl = TextEditingController();
     final lastNameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     final roomCtrl = TextEditingController();
     String role = 'member';
 
+    bool isInviteMode = false;
+    bool userNotFound = false;
+    bool isChecking = false;
+
     showCottageSheet(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => CottageSheetContent(
-          title: 'Invite Member',
+          title: isInviteMode ? 'Invite Member' : 'Add Member',
           children: [
             Text(
-              "They'll get an email to join this Cottage",
+              isInviteMode
+                  ? "They'll get an invitation email to join this Cottage"
+                  : "Enter their email address to add them to this Cottage",
               style: TextStyle(
                 fontSize: 12,
                 color: context.surface.mutedForeground,
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _InviteTextField(
-                    label: 'First Name',
-                    isRequired: true,
-                    hintText: 'John',
-                    controller: firstNameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _InviteTextField(
-                    label: 'Last Name',
-                    hintText: 'Doe',
-                    controller: lastNameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _InviteTextField(
-              label: 'Email',
-              isRequired: true,
-              hintText: 'johndoe@gmail.com',
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            _InviteTextField(
-              label: 'Room Label (optional)',
-              hintText: 'e.g. Room 2',
-              controller: roomCtrl,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Role',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF404040),
-                fontWeight: FontWeight.w400,
+            if (!isInviteMode) ...[
+              _InviteTextField(
+                label: 'Email',
+                isRequired: true,
+                hintText: 'johndoe@gmail.com',
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
               ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: _RoleChoice(
-                    label: 'Member',
-                    selected: role == 'member',
-                    onTap: () => setSheetState(() => role = 'member'),
+              if (userNotFound) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _RoleChoice(
-                    label: 'Super Admin',
-                    selected: role == 'super_admin',
-                    onTap: () => setSheetState(() => role = 'super_admin'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: Color(0xFFB45309),
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'This user is not registered on Cottage yet.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF92400E),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Send an invitation to let them sign up and join.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            setSheetState(() {
+                              isInviteMode = true;
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.mail_outline,
+                            size: 15,
+                            color: Color(0xFFD1593B),
+                          ),
+                          label: const Text(
+                            'Invite Member',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFD1593B),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFD1593B)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _InviteTextField(
+                      label: 'First Name',
+                      isRequired: true,
+                      hintText: 'John',
+                      controller: firstNameCtrl,
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _InviteTextField(
+                      label: 'Last Name',
+                      hintText: 'Doe',
+                      controller: lastNameCtrl,
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _InviteTextField(
+                label: 'Email',
+                isRequired: true,
+                hintText: 'johndoe@gmail.com',
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              _InviteTextField(
+                label: 'Room Label (optional)',
+                hintText: 'e.g. Room 2',
+                controller: roomCtrl,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Role',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF404040),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: _RoleChoice(
+                      label: 'Member',
+                      selected: role == 'member',
+                      onTap: () => setSheetState(() => role = 'member'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _RoleChoice(
+                      label: 'Super Admin',
+                      selected: role == 'super_admin',
+                      onTap: () => setSheetState(() => role = 'super_admin'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () async {
-                  final firstName = firstNameCtrl.text.trim();
-                  final email = emailCtrl.text.trim();
-                  if (firstName.isEmpty || email.isEmpty) {
-                    showToast(
-                      sheetContext,
-                      'First name and email are required.',
-                    );
-                    return;
-                  }
-                  final lastName = lastNameCtrl.text.trim();
-                  final room = roomCtrl.text.trim();
+                onPressed: isChecking
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (email.isEmpty) {
+                          showToast(sheetContext, 'Email is required.');
+                          return;
+                        }
 
-                  try {
-                    final result = await _memberService.inviteOrAddMember(
-                      cottageId: viewer.cottageId,
-                      email: email,
-                      firstName: firstName,
-                      lastName: lastName,
-                      role: role,
-                      roomLabel: room,
-                    );
+                        if (!isInviteMode) {
+                          setSheetState(() => isChecking = true);
+                          try {
+                            final result =
+                                await _memberService.inviteOrAddMember(
+                              cottageId: viewer.cottageId,
+                              email: email,
+                              firstName: '',
+                              lastName: '',
+                              role: 'member',
+                            );
 
-                    if (!mounted || !sheetContext.mounted) return;
+                            if (!mounted || !sheetContext.mounted) return;
 
-                    if (result == InviteMemberResult.added) {
-                      Navigator.pop(sheetContext);
-                      showToast(context, '$firstName was added to $cottageName!');
-                      _refresh();
-                      return;
-                    } else if (result == InviteMemberResult.alreadyInThisCottage) {
-                      showToast(sheetContext, '$email is already in this cottage.');
-                      return;
-                    } else if (result == InviteMemberResult.alreadyInAnotherCottage) {
-                      showToast(sheetContext, '$email is already a member of another cottage.');
-                      return;
-                    }
-                  } catch (e) {
-                    if (sheetContext.mounted) {
-                      showToast(sheetContext, 'Could not add member: $e');
-                    }
-                    return;
-                  }
+                            if (result == InviteMemberResult.added) {
+                              Navigator.pop(sheetContext);
+                              showToast(
+                                context,
+                                '$email was added to $cottageName!',
+                              );
+                              _refresh();
+                              return;
+                            } else if (result ==
+                                InviteMemberResult.alreadyInThisCottage) {
+                              setSheetState(() => isChecking = false);
+                              showToast(
+                                sheetContext,
+                                '$email is already in this cottage.',
+                              );
+                              return;
+                            } else if (result ==
+                                InviteMemberResult.alreadyInAnotherCottage) {
+                              setSheetState(() => isChecking = false);
+                              showToast(
+                                sheetContext,
+                                '$email belongs to another cottage.',
+                              );
+                              return;
+                            } else if (result == InviteMemberResult.needsSignup) {
+                              setSheetState(() {
+                                isChecking = false;
+                                userNotFound = true;
+                              });
+                              return;
+                            }
+                          } catch (e) {
+                            if (sheetContext.mounted) {
+                              setSheetState(() => isChecking = false);
+                              showToast(
+                                sheetContext,
+                                'Could not check member: $e',
+                              );
+                            }
+                            return;
+                          }
+                        } else {
+                          final firstName = firstNameCtrl.text.trim();
+                          if (firstName.isEmpty) {
+                            showToast(
+                              sheetContext,
+                              'First name is required.',
+                            );
+                            return;
+                          }
+                          final lastName = lastNameCtrl.text.trim();
+                          final room = roomCtrl.text.trim();
 
-                  await _memberService.sendBackendInvite(
-                    cottageId: viewer.cottageId,
-                    email: email,
-                    firstName: firstName,
-                    lastName: lastName,
-                    role: role,
-                    roomLabel: room,
-                  );
+                          setSheetState(() => isChecking = true);
+                          await _memberService.sendBackendInvite(
+                            cottageId: viewer.cottageId,
+                            email: email,
+                            firstName: firstName,
+                            lastName: lastName,
+                            role: role,
+                            roomLabel: room,
+                          );
 
-                  if (sheetContext.mounted) Navigator.pop(sheetContext);
-                  if (mounted) {
-                    showToast(
-                      context,
-                      'Invite sent to $email from backend.',
-                    );
-                  }
-                },
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
+                          }
+                          if (mounted) {
+                            showToast(
+                              context,
+                              'Invite sent to $email!',
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD1593B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  elevation: 0,
+                ),
+                child: isChecking
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        isInviteMode ? 'Invite Member' : 'Add Member',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFD1593B),
                   foregroundColor: Colors.white,
@@ -569,7 +728,7 @@ class _MembersScreenState extends State<MembersScreen>
                     surface: surface,
                     safeAreaTop: MediaQuery.of(context).padding.top,
                     onInviteTap: () =>
-                        _showInviteSheet(data.viewer, data.cottageName),
+                        _showAddMemberSheet(data.viewer, data.cottageName),
                   ),
                 ),
               ];
@@ -806,7 +965,7 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [_InviteButton(onTap: onInviteTap)]),
+              Row(children: [_AddMemberButton(onTap: onInviteTap)]),
             ],
           ),
         ),
@@ -820,9 +979,9 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-class _InviteButton extends StatelessWidget {
+class _AddMemberButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _InviteButton({required this.onTap});
+  const _AddMemberButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -831,7 +990,7 @@ class _InviteButton extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(Icons.add, color: surface.foreground, size: 18),
       label: Text(
-        'Invite',
+        'Add Member',
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 14,
