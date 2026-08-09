@@ -292,7 +292,7 @@ class MemberService {
 
     return BackendInviteResponse(
       isSuccess: false,
-      errorMessage: lastError ?? 'Failed to send invite via backend.',
+      errorMessage: lastError,
     );
   }
 }
