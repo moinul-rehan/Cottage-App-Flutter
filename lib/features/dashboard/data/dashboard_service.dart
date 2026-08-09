@@ -14,18 +14,126 @@ class DashboardService {
   final SupabaseClient _client = SupabaseService.client;
   final BazaarDutyService _bazaarDutyService = BazaarDutyService();
 
+  /// Ensures the signed-in member has a valid, linked profile.
+  /// Handles lookup by ID, email-link matching (for pre-invited users),
+  /// and automatic profile/cottage creation (for Google OAuth users).
+  Future<Map<String, dynamic>> _ensureAndFetchProfile(
+    String userId,
+    String selectColumns,
+  ) async {
+    final authUser = SupabaseService.currentUser;
+    if (authUser == null) {
+      throw Exception('No authenticated user session found.');
+    }
+
+    // 1. Direct lookup by ID
+    final rowsById = await _client
+        .from('profiles')
+        .select(selectColumns)
+        .eq('id', userId);
+
+    if ((rowsById as List).isNotEmpty) {
+      final profileMap = (rowsById as List).first as Map<String, dynamic>;
+      final cottageId = profileMap['cottage_id'] as String?;
+      if (cottageId != null && cottageId.isNotEmpty) {
+        return profileMap;
+      }
+    }
+
+    // 2. Email matching lookup (for pre-invited members)
+    final userEmail = authUser.email;
+    if (userEmail != null && userEmail.isNotEmpty) {
+      final rowsByEmail = await _client
+          .from('profiles')
+          .select(selectColumns)
+          .ilike('email', userEmail.trim().toLowerCase());
+
+      if ((rowsByEmail as List).isNotEmpty) {
+        final existing = (rowsByEmail as List).first as Map<String, dynamic>;
+        final existingCottageId = existing['cottage_id'] as String?;
+
+        final updateMap = <String, dynamic>{
+          'id': userId,
+          'email': userEmail.trim().toLowerCase(),
+          'is_active': true,
+          'removed_at': null,
+        };
+
+        if (existingCottageId == null || existingCottageId.isEmpty) {
+          final newCottage = await _client
+              .from('cottages')
+              .insert({
+                'name': 'My Cottage',
+                'created_by': userId,
+              })
+              .select('id')
+              .single();
+          updateMap['cottage_id'] = newCottage['id'];
+          updateMap['role'] = 'super_admin';
+        }
+
+        await _client
+            .from('profiles')
+            .update(updateMap)
+            .ilike('email', userEmail.trim().toLowerCase());
+
+        final reFetched = await _client
+            .from('profiles')
+            .select(selectColumns)
+            .eq('id', userId)
+            .single();
+        return reFetched as Map<String, dynamic>;
+      }
+    }
+
+    // 3. Fallback creation for Google OAuth users with no prior invite or profile
+    final newCottage = await _client
+        .from('cottages')
+        .insert({
+          'name': 'My Cottage',
+          'created_by': userId,
+        })
+        .select('id')
+        .single();
+
+    final cottageId = newCottage['id'] as String;
+    final meta = authUser.userMetadata ?? {};
+    final fullName = (meta['full_name'] ?? meta['name'] ?? '') as String;
+    final nameParts = fullName.trim().split(' ');
+    final firstName = nameParts.isNotEmpty && nameParts.first.isNotEmpty
+        ? nameParts.first
+        : (userEmail != null ? userEmail.split('@').first : 'User');
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : null;
+
+    final newProfile = {
+      'id': userId,
+      'cottage_id': cottageId,
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': userEmail,
+      'avatar_url': meta['avatar_url'] ?? meta['picture'],
+      'role': 'super_admin',
+      'is_active': true,
+    };
+
+    await _client.from('profiles').upsert(newProfile);
+
+    final finalProfile = await _client
+        .from('profiles')
+        .select(selectColumns)
+        .eq('id', userId)
+        .single();
+    return finalProfile as Map<String, dynamic>;
+  }
+
   /// The signed-in member's own profile row -- mirrors getCurrentProfile in
   /// src/lib/data/dal.ts (a smaller column slice for Phase 1).
   Future<Profile> getCurrentProfile() async {
     final userId = SupabaseService.currentUser!.id;
-    final row = await _client
-        .from('profiles')
-        .select(
-          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role',
-        )
-        .eq('id', userId)
-        .single();
-    return Profile.fromMap(row);
+    const cols =
+        'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role';
+    final map = await _ensureAndFetchProfile(userId, cols);
+    return Profile.fromMap(map);
   }
 
   /// Same as [getCurrentProfile] but including the `can_add_*` grant
@@ -35,15 +143,11 @@ class DashboardService {
   /// should submit a request instead of writing directly).
   Future<Profile> getCurrentProfileFull() async {
     final userId = SupabaseService.currentUser!.id;
-    final row = await _client
-        .from('profiles')
-        .select(
-          'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, '
-          'can_add_expenses, can_add_bazaar, can_add_meals, can_add_deposit, can_add_notice',
-        )
-        .eq('id', userId)
-        .single();
-    return Profile.fromMap(row);
+    const cols =
+        'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, '
+        'can_add_expenses, can_add_bazaar, can_add_meals, can_add_deposit, can_add_notice';
+    final map = await _ensureAndFetchProfile(userId, cols);
+    return Profile.fromMap(map);
   }
 
   /// cottages.active_month_key, falling back to the current calendar month

@@ -177,9 +177,15 @@ class _AuthGateState extends State<_AuthGate> {
       builder: (context, snapshot) {
         final session =
             snapshot.data?.session ?? SupabaseService.currentSession;
-        return session != null
-            ? BottomNavShell(preloadedDashboard: widget.preloadedDashboard)
-            : const LoginScreen();
+        if (session == null) return const LoginScreen();
+
+        final preloaded =
+            (widget.preloadedDashboard != null &&
+                    widget.preloadedDashboard!.$1.id == session.user.id)
+                ? widget.preloadedDashboard
+                : null;
+
+        return BottomNavShell(preloadedDashboard: preloaded);
       },
     );
   }
