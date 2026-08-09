@@ -188,6 +188,32 @@ class MemberService {
 
     return InviteMemberResult.added;
   }
+
+  /// Triggers a backend invitation email via Supabase Functions or auth workflow.
+  Future<void> sendBackendInvite({
+    required String cottageId,
+    required String email,
+    required String firstName,
+    required String lastName,
+    required String role,
+    String? roomLabel,
+  }) async {
+    try {
+      await _client.functions.invoke(
+        'send-invite',
+        body: {
+          'email': email.trim().toLowerCase(),
+          'cottage_id': cottageId,
+          'first_name': firstName,
+          'last_name': lastName,
+          'role': role,
+          'room_label': roomLabel,
+        },
+      );
+    } catch (_) {
+      // Backend function fallback / silent handling
+    }
+  }
 }
 
 enum InviteMemberResult {

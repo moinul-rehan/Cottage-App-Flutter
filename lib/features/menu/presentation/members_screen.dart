@@ -472,32 +472,21 @@ class _MembersScreenState extends State<MembersScreen>
                     return;
                   }
 
-                  final subject =
-                      "You're invited to join $cottageName on Cottage";
-                  final body = StringBuffer()
-                    ..writeln(
-                      'Hi $firstName${lastName.isEmpty ? '' : ' $lastName'},',
-                    )
-                    ..writeln()
-                    ..writeln(
-                      '${viewer.displayName} has invited you to join "$cottageName" on Cottage as a $roleLabel${room.isEmpty ? '' : ' ($room)'}.',
-                    )
-                    ..writeln()
-                    ..writeln(
-                      'Download the Cottage app, sign up, and you\'ll be automatically added to the cottage.',
-                    );
-
-                  final uri = Uri(
-                    scheme: 'mailto',
-                    path: email,
-                    query:
-                        'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body.toString())}',
+                  await _memberService.sendBackendInvite(
+                    cottageId: viewer.cottageId,
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    role: role,
+                    roomLabel: room,
                   );
+
                   if (sheetContext.mounted) Navigator.pop(sheetContext);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri);
-                  } else if (mounted) {
-                    showToast(context, 'Could not open a mail app.');
+                  if (mounted) {
+                    showToast(
+                      context,
+                      'Invite sent to $email from backend.',
+                    );
                   }
                 },
                 style: ElevatedButton.styleFrom(
