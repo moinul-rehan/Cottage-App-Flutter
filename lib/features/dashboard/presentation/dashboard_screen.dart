@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cottage/helpers/supabase_service.dart';
 import '../data/dashboard_data.dart';
 import '../data/dashboard_service.dart';
 import 'package:cottage/models/profile.dart';

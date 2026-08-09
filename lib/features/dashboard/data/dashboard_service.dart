@@ -82,7 +82,7 @@ class DashboardService {
             .select(selectColumns)
             .eq('id', userId)
             .single();
-        return reFetched as Map<String, dynamic>;
+        return reFetched;
       }
     }
 
@@ -123,7 +123,7 @@ class DashboardService {
         .select(selectColumns)
         .eq('id', userId)
         .single();
-    return finalProfile as Map<String, dynamic>;
+    return finalProfile;
   }
 
   /// The signed-in member's own profile row -- mirrors getCurrentProfile in
