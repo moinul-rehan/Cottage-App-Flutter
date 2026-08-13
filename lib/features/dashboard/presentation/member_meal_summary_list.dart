@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cottage/constants/theme.dart';
 import '../data/dashboard_data.dart';
 import '../../bazaar_duty/data/bazaar_duty_models.dart';
 
-/// "Member Meal Summary" section added to the Figma spec's second revision:
-/// one bordered card per member (avatar/name header, then a Total Meal /
-/// Deposit / Meal Cost / Balance 2x2 stat grid) instead of the grid of
-/// small `_MemberMealCard`s this screen used to render. Same
-/// [MemberMealRow] data (see `getMemberMealSummary` in
-/// src/lib/data/meal.ts), just restyled.
+/// "Member Meal Summary" section, matching the Figma spec (node 1:2796): a
+/// tinted "Cottage Meal Summary" stat card (meal rate + total meal/cost)
+/// above one card per member (avatar/name header, then a Total Meal /
+/// Deposit / Meal Cost / Balance 2x2 stat grid). Same [MemberMealRow] data
+/// (see `getMemberMealSummary` in src/lib/data/meal.ts), just restyled.
 class MemberMealSummaryList extends StatelessWidget {
   final List<MemberMealRow> rows;
   final List<BazaarDuty> bazaarDuties;
+  final double mealRate;
+  final double totalMeals;
+  final double totalMealCost;
+
   const MemberMealSummaryList({
     super.key,
     required this.rows,
     required this.bazaarDuties,
+    required this.mealRate,
+    required this.totalMeals,
+    required this.totalMealCost,
   });
 
   @override
@@ -25,20 +32,119 @@ class MemberMealSummaryList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Member Meal Summary',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1E1E1E),
-          ),
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500, color: const Color(0xFF242424)),
         ),
         const SizedBox(height: 16),
+        _CottageMealSummaryCard(mealRate: mealRate, totalMeals: totalMeals, totalMealCost: totalMealCost),
+        const SizedBox(height: 10),
         for (int i = 0; i < rows.length; i++) ...[
           _MemberCard(row: rows[i], bazaarDuties: bazaarDuties),
           if (i < rows.length - 1) const SizedBox(height: 10),
         ],
       ],
+    );
+  }
+}
+
+/// Cottage-wide meal rate + total meal/cost, matching Figma node 177:2154 --
+/// a peach-tinted stat card sitting above the per-member cards.
+class _CottageMealSummaryCard extends StatelessWidget {
+  final double mealRate;
+  final double totalMeals;
+  final double totalMealCost;
+
+  const _CottageMealSummaryCard({
+    required this.mealRate,
+    required this.totalMeals,
+    required this.totalMealCost,
+  });
+
+  String _tk(double v) => '${v.toStringAsFixed(2)} tk';
+  String _count(double v) => v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEFEA),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDE7356).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.calculate_outlined, color: Color(0xFFDE7356), size: 19),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Cottage Meal Summary',
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF404040)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _tk(mealRate),
+            style: GoogleFonts.poppins(fontSize: 21, fontWeight: FontWeight.w700, color: const Color(0xFF404040)),
+          ),
+          Text(
+            'Meal Rate',
+            style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFFAAAAAA)),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _CottageStatPill(label: 'Total Meal', value: _count(totalMeals))),
+              const SizedBox(width: 12),
+              Expanded(child: _CottageStatPill(label: 'Meal Cost', value: _tk(totalMealCost))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CottageStatPill extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CottageStatPill({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.58),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFFAAAAAA))),
+          Text(value, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w500, color: const Color(0xFF404040))),
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
@@ -107,18 +108,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Mirrors LoginForm.tsx's handleGoogleLogin, using Supabase's OAuth flow.
-  /// The browser round-trip redirects to [SupabaseService.oauthRedirectUrl],
-  /// which the OS hands back to this app via the intent-filter/URL-scheme
-  /// registered in AndroidManifest.xml/Info.plist; the root _AuthGate
-  /// (main.dart) then picks up the resulting session automatically.
+  /// Mirrors LoginForm.tsx's handleGoogleLogin, but via native Google
+  /// sign-in (the OS account-chooser shown in-app, e.g. Android's Credential
+  /// Manager) instead of a browser round-trip -- see
+  /// [SupabaseService.signInWithGoogleNative]. The root _AuthGate
+  /// (main.dart) picks up the resulting session automatically once it's set.
   Future<void> _signInWithGoogle() async {
     setState(() => _loginGoogleSubmitting = true);
     try {
-      await SupabaseService.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: SupabaseService.oauthRedirectUrl,
-      );
+      await SupabaseService.signInWithGoogleNative();
+    } on GoogleSignInException catch (e) {
+      // User dismissed the account picker -- not an error worth surfacing.
+      if (e.code != GoogleSignInExceptionCode.canceled && mounted) {
+        setState(
+          () => _loginError = 'Google sign-in failed. Please try again.',
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -175,9 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Mirrors SignupForm.tsx's handleGoogleSignup -- see
-  /// [_signInWithGoogle]'s doc comment for how the deep-link redirect and
-  /// auto-navigation work.
+  /// Mirrors SignupForm.tsx's handleGoogleSignup -- see [_signInWithGoogle]'s
+  /// doc comment for how native sign-in and auto-navigation work.
   ///
   /// NOTE (follow-up, still out of scope): unlike email/password signUp
   /// above, there's no way to pass `mode: "create_cottage"` metadata through
@@ -189,10 +193,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signUpWithGoogle() async {
     setState(() => _signupGoogleSubmitting = true);
     try {
-      await SupabaseService.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: SupabaseService.oauthRedirectUrl,
-      );
+      await SupabaseService.signInWithGoogleNative();
+    } on GoogleSignInException catch (e) {
+      if (e.code != GoogleSignInExceptionCode.canceled && mounted) {
+        setState(
+          () => _signupError = 'Google sign-in failed. Please try again.',
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(

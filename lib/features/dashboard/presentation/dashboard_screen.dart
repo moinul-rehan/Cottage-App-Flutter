@@ -193,6 +193,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                       MemberMealSummaryList(
                         rows: data.memberMealRows,
                         bazaarDuties: data.bazaarDuties,
+                        mealRate: data.mealRate,
+                        totalMeals: data.totalMeals,
+                        totalMealCost: data.totalBazaar,
                       ),
                       const SizedBox(height: 24),
                     ]),
