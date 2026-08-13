@@ -384,11 +384,13 @@ class DashboardService {
     final totalUtilityExpenseFuture = _getMonthlyExpenseTotal(monthKey);
     final myDueFuture = _getMyDue(me.cottageId, monthKey, me.id);
     final membersFuture = _getActiveMembers(me.cottageId);
-    // Shared roster of every member's upcoming/current bazaar duty -- mirrors
-    // getCottageBazaarDuties in src/lib/data/bazaar-duty.ts, fetched
-    // alongside everything else like the web dashboard does.
+    // Shared roster of every duty overlapping the active month -- mirrors
+    // getCottageBazaarDuties(supabase, cottageId, monthKey) in
+    // src/lib/data/bazaar-duty.ts, fetched alongside everything else like
+    // the web dashboard does.
     final bazaarDutiesFuture = _bazaarDutyService.getCottageBazaarDuties(
       me.cottageId,
+      monthKey,
     );
 
     final cottageBalance = await cottageBalanceFuture;
@@ -418,9 +420,11 @@ class DashboardService {
     }).toList();
 
     // "Outstanding from members" / "Collected this month" need every
-    // member's due, not just mine -- fetch the whole cottage's adjustments
-    // and deposits for the month in two queries rather than looping
-    // _getMyDue per member (mirrors getMonthlyDues building its map once).
+    // member's due, not just mine -- fetch the whole cottage's adjustments,
+    // deposits, and carry-ins for the month in three queries rather than
+    // looping _getMyDue per member (mirrors getMonthlyDues building its map
+    // once). Carry-ins must be included or a member's carried-in due/advance
+    // would silently drop out of the cottage-wide totals.
     final allAdjustments = await _client
         .from('utility_adjustments')
         .select('user_id, category, amount')
@@ -432,9 +436,19 @@ class DashboardService {
         .eq('cottage_id', me.cottageId)
         .eq('month_key', monthKey)
         .eq('source_type', 'member');
+    final allCarryIns = await _client
+        .from('utility_carry_ins')
+        .select('user_id, amount')
+        .eq('cottage_id', me.cottageId)
+        .eq('month_key', monthKey);
 
     final dueByUser = <String, double>{};
     for (final row in allAdjustments as List) {
+      final userId = row['user_id'] as String;
+      final amount = (row['amount'] as num).toDouble();
+      dueByUser[userId] = (dueByUser[userId] ?? 0) + amount;
+    }
+    for (final row in allCarryIns as List) {
       final userId = row['user_id'] as String;
       final amount = (row['amount'] as num).toDouble();
       dueByUser[userId] = (dueByUser[userId] ?? 0) + amount;

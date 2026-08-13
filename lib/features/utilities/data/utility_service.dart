@@ -34,25 +34,76 @@ class UtilityService {
         .toList();
   }
 
-  /// Add a new expense.
+  /// Add a new utility expense, plus the exact side effects the web app's
+  /// `addExpense` server action applies for the chosen [paymentSource] (see
+  /// src/app/(house)/utilities/actions.ts): `'cottage_balance'` debits the
+  /// shared fund (a `cottage_balance_transactions` row), `'member'` credits
+  /// [paidByMemberId]'s utility due directly (a negative `utility_adjustments`
+  /// row, since they already paid the vendor out of pocket -- this is what
+  /// `paid_by` also reflects), `'none'` just records the expense with no
+  /// other effect. Previously this only wrote a free-text `payment_source`
+  /// string onto the expense row and skipped these side effects entirely.
   Future<void> addExpense({
     required String cottageId,
+    required String createdBy,
+    required String monthKey,
     required double amount,
     required String expenseDate,
     String? description,
-    String? category,
-    String? paymentSource,
+    required String category,
+    required String paymentSource,
+    String? paidByMemberId,
   }) async {
-    await _client.from('expenses').insert({
-      'cottage_id': cottageId,
-      'amount': amount,
-      'expense_date': expenseDate,
-      if (description != null && description.isNotEmpty)
-        'description': description,
-      if (category != null && category.isNotEmpty) 'category': category,
-      if (paymentSource != null && paymentSource.isNotEmpty)
-        'payment_source': paymentSource,
-    });
+    assert(
+      paymentSource == 'member' ||
+          paymentSource == 'cottage_balance' ||
+          paymentSource == 'none',
+    );
+    assert(paymentSource != 'member' || paidByMemberId != null);
+
+    final paidBy = paymentSource == 'member' ? paidByMemberId! : createdBy;
+    final expenseRow = await _client
+        .from('expenses')
+        .insert({
+          'cottage_id': cottageId,
+          'category': category,
+          'amount': amount,
+          if (description != null && description.isNotEmpty)
+            'description': description,
+          'paid_by': paidBy,
+          'expense_date': expenseDate,
+          'split_type': 'custom',
+          'payment_source': paymentSource,
+          'created_by': createdBy,
+        })
+        .select('id')
+        .single();
+    final expenseId = expenseRow['id'] as String;
+
+    if (paymentSource == 'cottage_balance') {
+      await _client.from('cottage_balance_transactions').insert({
+        'cottage_id': cottageId,
+        'amount': amount,
+        'direction': 'out',
+        'reason': (description != null && description.isNotEmpty)
+            ? description
+            : category,
+        'related_expense_id': expenseId,
+        'created_by': createdBy,
+      });
+    } else if (paymentSource == 'member') {
+      await _client.from('utility_adjustments').insert({
+        'cottage_id': cottageId,
+        'month_key': monthKey,
+        'user_id': paidByMemberId,
+        'category': category,
+        'amount': -amount,
+        'payment_source': 'none',
+        'payment_member_id': null,
+        'related_expense_id': expenseId,
+        'created_by': createdBy,
+      });
+    }
   }
 
   /// Fetch all utility deposits for the given month, with member names.
@@ -74,24 +125,62 @@ class UtilityService {
         .toList();
   }
 
-  /// Add a utility deposit -- 'member' (a roommate's personal contribution)
-  /// or any other [sourceType] (e.g. 'cottage', for money the cottage fund
-  /// itself put in) per the Figma "Cottage Deposit" tab.
+  /// Add a utility deposit -- either `'member'` (a roommate's personal
+  /// contribution toward their own due, requires [userId]) or `'addition'`
+  /// (the cottage's own money entering the fund directly, no member
+  /// account changes -- [userId] must be omitted/null for this one). Ports
+  /// `addMemberUtilityDeposit`/`addCottageDeposit` in
+  /// src/app/(house)/utilities/actions.ts exactly, including their shared
+  /// side effect this used to skip entirely: both credit
+  /// `cottage_balance_transactions` (`direction: 'in'`) for the same
+  /// amount, linked via `related_deposit_id` -- without that insert,
+  /// Cottage Balance permanently under-counted every deposit ever
+  /// recorded, member or cottage. The `source_type` value itself used to
+  /// be the literal `'cottage'`, which isn't a value the DB's check
+  /// constraint (`source_type in ('member','addition')`, see migration
+  /// 0016) allows -- every "Add Cottage Deposit" was silently failing to
+  /// insert at all.
   Future<void> addDeposit({
     required String cottageId,
-    required String userId,
     required String monthKey,
     required double amount,
+    required String createdBy,
+    required String depositDate,
+    String? userId,
     String sourceType = 'member',
     String? note,
   }) async {
-    await _client.from('utility_deposits').insert({
+    assert(sourceType == 'member' || sourceType == 'addition');
+    assert(sourceType != 'member' || userId != null);
+    assert(sourceType != 'addition' || userId == null);
+
+    final depositRow = await _client
+        .from('utility_deposits')
+        .insert({
+          'cottage_id': cottageId,
+          'month_key': monthKey,
+          'user_id': userId,
+          'source_type': sourceType,
+          'amount': amount,
+          'deposit_date': depositDate,
+          if (note != null && note.isNotEmpty) 'note': note,
+          'created_by': createdBy,
+        })
+        .select('id')
+        .single();
+    final depositId = depositRow['id'] as String;
+
+    await _client.from('cottage_balance_transactions').insert({
       'cottage_id': cottageId,
-      'user_id': userId,
-      'month_key': monthKey,
       'amount': amount,
-      'source_type': sourceType,
-      if (note != null && note.isNotEmpty) 'note': note,
+      'direction': 'in',
+      'reason': (note != null && note.isNotEmpty)
+          ? note
+          : (sourceType == 'member'
+                ? 'Member Utility Deposit'
+                : 'Cottage Deposit'),
+      'related_deposit_id': depositId,
+      'created_by': createdBy,
     });
   }
 

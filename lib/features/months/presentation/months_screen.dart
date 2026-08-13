@@ -9,12 +9,6 @@ import '../../dashboard/data/dashboard_service.dart';
 import '../data/month_models.dart';
 import '../data/months_service.dart';
 
-const _border = Color(0xFFEEEEEE);
-const _fieldBg = Color(0xFFFAFAFA);
-const _darkText = Color(0xFF404040);
-const _placeholder = Color(0xFFAAAAAA);
-const _headingText = Color(0xFF17191E);
-const _mutedText = Color(0xFF7A818D);
 const _dangerRed = Color(0xFFFF4F4F);
 const _setActiveButton = Color(0xFFD1593B);
 
@@ -158,89 +152,221 @@ class _MonthsScreenState extends State<MonthsScreen> {
     );
   }
 
+  // Page shell mirrors UtilityStatementScreen's (see
+  // _DynamicUtilityStatementHeaderDelegate there) NestedScrollView shrink-on-
+  // scroll header, minus the tab bar/description/button row that page has --
+  // this page's header is just a collapsing title, with all actions living
+  // in the scrollable _MonthsBody below.
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
     return Scaffold(
       backgroundColor: CottageColors.primary,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.responsivePadding,
-                8,
-                context.responsivePadding,
-                16,
-              ),
-              child: const Row(
-                children: [
-                  Text(
-                    'Months',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _DynamicMonthsHeaderDelegate(
+                surface: surface,
+                safeAreaTop: MediaQuery.of(context).padding.top,
               ),
             ),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: surface.card,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+          ];
+        },
+        body: Container(
+          color: surface.card,
+          child: FutureBuilder<_MonthsData>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CottageLoader());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 40,
+                        color: CottageColors.destructive,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Could not load months.\n${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _refresh,
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                ),
-                child: FutureBuilder<_MonthsData>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CottageLoader());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 40,
-                              color: CottageColors.destructive,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Could not load months.\n${snapshot.error}',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _refresh,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return _MonthsBody(
-                      data: snapshot.data!,
-                      monthsService: _monthsService,
-                      onRunConfirmed: _runConfirmed,
-                      onPickMonth: _pickMonth,
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+                );
+              }
+              return _MonthsBody(
+                data: snapshot.data!,
+                monthsService: _monthsService,
+                onRunConfirmed: _runConfirmed,
+                onPickMonth: _pickMonth,
+              );
+            },
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Collapsing header for the Months page -- a simplified sibling of
+/// _DynamicUtilityStatementHeaderDelegate in utility_statement_screen.dart:
+/// same orange-retreats-1.5x-faster background formula and expanded/
+/// collapsed title crossfade, but no month badge, no description, and no
+/// bottom-pinned button row since this page has none of those (its "Set
+/// Active Month" and Danger Zone actions live inside the scrollable
+/// _MonthsBody instead).
+class _DynamicMonthsHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final double safeAreaTop;
+
+  _DynamicMonthsHeaderDelegate({
+    required this.surface,
+    required this.safeAreaTop,
+  });
+
+  @override
+  double get minExtent => safeAreaTop + 56.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 70.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background: Orange top, White bottom -- the orange band retreats
+        // 1.5x faster than plain scroll progress so it's fully gone well
+        // before the header reaches minExtent, same as Utility Statement.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        // Expanded Content (Fades out) -- clipped in an OverflowBox for the
+        // same reason as Utility Statement's header: the box this sits in
+        // keeps shrinking continuously as the header collapses, so Opacity
+        // alone (which only hides pixels, not layout) would let mid-scroll
+        // frames overflow.
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: safeAreaTop + 56,
+                          padding: EdgeInsets.only(
+                            top: safeAreaTop,
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: const Text(
+                            'Months',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Collapsed Content (Fades in)
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Months',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: surface.foreground,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicMonthsHeaderDelegate oldDelegate) {
+    return true;
   }
 }
 
@@ -275,6 +401,7 @@ class _MonthsBodyState extends State<_MonthsBody> {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final data = widget.data;
     final isAdmin = data.viewer.isSuperAdmin;
 
@@ -286,25 +413,25 @@ class _MonthsBodyState extends State<_MonthsBody> {
         24,
       ),
       children: [
-        const Text(
+        Text(
           'Manage the active month and browse locked history. All actions require your password to confirm.',
-          style: TextStyle(fontSize: 14, color: Color(0xFF303030)),
+          style: TextStyle(fontSize: 14, color: surface.mutedForeground),
         ),
         const SizedBox(height: 16),
         _MonthCard(
           stats: data.activeStats,
           badgeLabel: 'Active',
-          badgeBg: const Color(0xFFE8F5EC),
-          badgeFg: const Color(0xFF059669),
+          badgeBg: surface.toneGreenBg,
+          badgeFg: surface.toneGreenFg,
         ),
         if (isAdmin) ...[
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Set Active Month',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: _headingText,
+              color: surface.foreground,
             ),
           ),
           const SizedBox(height: 6),
@@ -317,8 +444,8 @@ class _MonthsBodyState extends State<_MonthsBody> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: _fieldBg,
-                border: Border.all(color: _border),
+                color: surface.background,
+                border: Border.all(color: surface.border),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -327,7 +454,9 @@ class _MonthsBodyState extends State<_MonthsBody> {
                     : _monthLabel(_pickedMonthKey!),
                 style: TextStyle(
                   fontSize: 13,
-                  color: _pickedMonthKey == null ? _placeholder : _darkText,
+                  color: _pickedMonthKey == null
+                      ? surface.mutedForeground
+                      : surface.foreground,
                 ),
               ),
             ),
@@ -366,12 +495,12 @@ class _MonthsBodyState extends State<_MonthsBody> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Danger Zone',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: _headingText,
+              color: surface.foreground,
             ),
           ),
           const SizedBox(height: 6),
@@ -398,26 +527,26 @@ class _MonthsBodyState extends State<_MonthsBody> {
           ),
         ],
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'History',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: _headingText,
+            color: surface.foreground,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Locked months. A month lands here once a different month is set active.',
-          style: TextStyle(fontSize: 12, color: _mutedText),
+          style: TextStyle(fontSize: 12, color: surface.mutedForeground),
         ),
         const SizedBox(height: 12),
         if (data.history.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'No locked months yet.',
-              style: TextStyle(fontSize: 13, color: _mutedText),
+              style: TextStyle(fontSize: 13, color: surface.mutedForeground),
             ),
           )
         else
@@ -427,8 +556,8 @@ class _MonthsBodyState extends State<_MonthsBody> {
               child: _MonthCard(
                 stats: entry.stats,
                 badgeLabel: 'Locked ${_lockedDate(entry.closedAt)}',
-                badgeBg: _fieldBg,
-                badgeFg: _mutedText,
+                badgeBg: surface.background,
+                badgeFg: surface.mutedForeground,
                 actions: isAdmin
                     ? Row(
                         children: [
@@ -448,8 +577,8 @@ class _MonthsBodyState extends State<_MonthsBody> {
                                 height: 40,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(color: _border),
+                                  color: surface.card,
+                                  border: Border.all(color: surface.border),
                                   borderRadius: BorderRadius.circular(1000),
                                   boxShadow: [
                                     BoxShadow(
@@ -463,19 +592,19 @@ class _MonthsBodyState extends State<_MonthsBody> {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.download_outlined,
                                       size: 18,
-                                      color: _darkText,
+                                      color: surface.foreground,
                                     ),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Activate',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
-                                        color: _darkText,
+                                        color: surface.foreground,
                                       ),
                                     ),
                                   ],
@@ -570,12 +699,13 @@ class _MonthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _border),
+        color: surface.card,
+        border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -586,10 +716,10 @@ class _MonthCard extends StatelessWidget {
               Flexible(
                 child: Text(
                   _monthLabel(stats.monthKey),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: _headingText,
+                    color: surface.foreground,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -614,33 +744,36 @@ class _MonthCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _statRow(
+            surface,
             'Total Utility Due',
             '${stats.totalUtilityDue.toStringAsFixed(2)} tk',
           ),
           const SizedBox(height: 4),
           _statRow(
+            surface,
             'Total Bazaar',
             '${stats.totalBazaar.toStringAsFixed(2)} tk',
           ),
           const SizedBox(height: 4),
           _statRow(
+            surface,
             'Total Meals',
             stats.totalMeals.toStringAsFixed(stats.totalMeals % 1 == 0 ? 0 : 1),
           ),
           const SizedBox(height: 4),
-          _statRow('Meal Rate', '${stats.mealRate.toStringAsFixed(2)} tk'),
+          _statRow(surface, 'Meal Rate', '${stats.mealRate.toStringAsFixed(2)} tk'),
           if (actions != null) ...[const SizedBox(height: 8), actions!],
         ],
       ),
     );
   }
 
-  Widget _statRow(String label, String value) {
+  Widget _statRow(CottageSurface surface, String label, String value) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: _fieldBg,
+        color: surface.background,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -648,15 +781,15 @@ class _MonthCard extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12, color: _mutedText),
+              style: TextStyle(fontSize: 12, color: surface.mutedForeground),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: _headingText,
+              color: surface.foreground,
             ),
           ),
         ],

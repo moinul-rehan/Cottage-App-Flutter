@@ -100,182 +100,185 @@ class _ContactsScreenState extends State<ContactsScreen>
     showCottageSheet(
       context: context,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.call_outlined,
-                    size: 20,
-                    color: Color(0xFF17191E),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Create Contact',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF17191E),
+        builder: (sheetContext, setSheetState) {
+          final surface = sheetContext.surface;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.call_outlined,
+                      size: 20,
+                      color: surface.foreground,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Create Contact',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: surface.foreground,
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(sheetContext),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAFAFA),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        size: 16,
-                        color: Color(0xFF404040),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(sheetContext),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: surface.background,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: surface.foreground,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Text(
-                    'Name ',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                  ),
-                  Text(
-                    '*',
-                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: nameCtrl,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                decoration: _contactFieldDecoration('e.g. Rafiqul Islam'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Text(
-                    'Category ',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                  ),
-                  Text(
-                    '*',
-                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in _contactCategories)
-                    _CategoryChip(
-                      label: c,
-                      selected: category == c,
-                      onTap: () => setSheetState(() => category = c),
-                    ),
-                ],
-              ),
-              if (category == 'Other') ...[
+                  ],
+                ),
                 const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      'Name ',
+                      style: TextStyle(fontSize: 13, color: surface.foreground),
+                    ),
+                    const Text(
+                      '*',
+                      style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
                 TextField(
-                  controller: otherCtrl,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF404040),
-                  ),
-                  decoration: _contactFieldDecoration('Servant'),
+                  controller: nameCtrl,
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
+                  decoration: _contactFieldDecoration(surface, 'e.g. Rafiqul Islam'),
                   textCapitalization: TextCapitalization.words,
                 ),
-              ],
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Text(
-                    'Phone ',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                  ),
-                  Text(
-                    '*',
-                    style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      'Category ',
+                      style: TextStyle(fontSize: 13, color: surface.foreground),
+                    ),
+                    const Text(
+                      '*',
+                      style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final c in _contactCategories)
+                      _CategoryChip(
+                        label: c,
+                        selected: category == c,
+                        onTap: () => setSheetState(() => category = c),
+                      ),
+                  ],
+                ),
+                if (category == 'Other') ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: otherCtrl,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: surface.foreground,
+                    ),
+                    decoration: _contactFieldDecoration(surface, 'Servant'),
+                    textCapitalization: TextCapitalization.words,
                   ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: phoneCtrl,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                decoration: _contactFieldDecoration('01711-223344'),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Email (optional)',
-                style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: emailCtrl,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
-                decoration: _contactFieldDecoration('name@example.com'),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  final phone = phoneCtrl.text.trim();
-                  final other = otherCtrl.text.trim();
-                  if (name.isEmpty || phone.isEmpty) {
-                    showToast(sheetContext, 'Name and phone are required.');
-                    return;
-                  }
-                  if (category == 'Other' && other.isEmpty) {
-                    showToast(sheetContext, 'Enter a custom category.');
-                    return;
-                  }
-                  Navigator.pop(sheetContext);
-                  await _contactService.createContact(
-                    cottageId: profile.cottageId,
-                    createdBy: profile.id,
-                    name: name,
-                    label: category == 'Other' ? other : category,
-                    mobileNumber: phone,
-                    email: emailCtrl.text.trim().isEmpty
-                        ? null
-                        : emailCtrl.text.trim(),
-                  );
-                  _refresh();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD1593B),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      'Phone ',
+                      style: TextStyle(fontSize: 13, color: surface.foreground),
+                    ),
+                    const Text(
+                      '*',
+                      style: TextStyle(fontSize: 13, color: Color(0xFFCC4F4F)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: phoneCtrl,
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
+                  decoration: _contactFieldDecoration(surface, '01711-223344'),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Email (optional)',
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: emailCtrl,
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
+                  decoration: _contactFieldDecoration(surface, 'name@example.com'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final phone = phoneCtrl.text.trim();
+                    final other = otherCtrl.text.trim();
+                    if (name.isEmpty || phone.isEmpty) {
+                      showToast(sheetContext, 'Name and phone are required.');
+                      return;
+                    }
+                    if (category == 'Other' && other.isEmpty) {
+                      showToast(sheetContext, 'Enter a custom category.');
+                      return;
+                    }
+                    Navigator.pop(sheetContext);
+                    await _contactService.createContact(
+                      cottageId: profile.cottageId,
+                      createdBy: profile.id,
+                      name: name,
+                      label: category == 'Other' ? other : category,
+                      mobileNumber: phone,
+                      email: emailCtrl.text.trim().isEmpty
+                          ? null
+                          : emailCtrl.text.trim(),
+                    );
+                    _refresh();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD1593B),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    elevation: 0,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  elevation: 0,
+                  child: const Text(
+                    'Save Contact',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
                 ),
-                child: const Text(
-                  'Save Contact',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -295,146 +298,345 @@ class _ContactsScreenState extends State<ContactsScreen>
     }
   }
 
+  // Page shell mirrors UtilityStatementScreen's collapsing header (see
+  // _DynamicUtilityStatementHeaderDelegate there): a NestedScrollView whose
+  // orange header shrinks into a compact pinned bar as the contact list
+  // scrolls, instead of a static fixed-height header band above an
+  // independently scrolling body.
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
-    return Scaffold(
-      backgroundColor: CottageColors.primary,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.responsivePadding,
-                8,
-                context.responsivePadding,
-                16,
-              ),
-              child: Row(
-                children: [
-                  const Text(
-                    'Contacts',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
+    return FutureBuilder<_ContactsData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData &&
+            snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(
               child: Container(
-                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                margin: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: surface.card,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: FutureBuilder<_ContactsData>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 40,
-                              color: CottageColors.destructive,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Could not load contacts.\n${snapshot.error}',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _refresh,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final data = snapshot.data!;
-                    return RefreshIndicator(
-                      onRefresh: () async => _refresh(),
-                      child: ListView(
-                        padding: EdgeInsets.fromLTRB(
-                          context.responsivePadding,
-                          24,
-                          context.responsivePadding,
-                          24 + MediaQuery.paddingOf(context).bottom,
-                        ),
-                        children: [
-                          const Text(
-                            'Necessary people for the Cottage - landlord, electrician, and the like.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF303030),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _CreateContactButton(
-                            onTap: () => _showCreateContact(data.profile),
-                          ),
-                          const SizedBox(height: 16),
-                          if (data.contacts.isEmpty)
-                            const EmptyState(
-                              icon: Icons.contact_phone_outlined,
-                              title: 'No contacts yet.',
-                            )
-                          else
-                            for (final c in data.contacts)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _ContactCard(
-                                  contact: c,
-                                  onDelete: () => _confirmDelete(c),
-                                  onCall: c.mobileNumber == null
-                                      ? null
-                                      : () => _launch('tel', c.mobileNumber!),
-                                  onEmail: c.email == null
-                                      ? null
-                                      : () => _launch('mailto', c.email!),
-                                ),
-                              ),
-                        ],
-                      ),
-                    );
-                  },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Could not load contacts.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: surface.foreground),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          );
+        }
+
+        final data = snapshot.data!;
+
+        final pageContent = Scaffold(
+          backgroundColor: CottageColors.primary,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicContactsHeaderDelegate(
+                    surface: surface,
+                    safeAreaTop: MediaQuery.of(context).padding.top,
+                    onCreateContact: () => _showCreateContact(data.profile),
+                  ),
+                ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: RefreshIndicator(
+                onRefresh: () async => _refresh(),
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.responsivePadding,
+                    20,
+                    context.responsivePadding,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    if (data.contacts.isEmpty)
+                      const EmptyState(
+                        icon: Icons.contact_phone_outlined,
+                        title: 'No contacts yet.',
+                      )
+                    else
+                      for (final c in data.contacts)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _ContactCard(
+                            contact: c,
+                            onDelete: () => _confirmDelete(c),
+                            onCall: c.mobileNumber == null
+                                ? null
+                                : () => _launch('tel', c.mobileNumber!),
+                            onEmail: c.email == null
+                                ? null
+                                : () => _launch('mailto', c.email!),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Stack(
+            children: [
+              pageContent,
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ],
+          );
+        }
+        return pageContent;
+      },
     );
   }
 }
 
-/// Figma node 84:1123's field style: #FAFAFA fill, #EEEEEE border, 10px
-/// radius, 14/12 padding, #AAAAAA hint text -- used by every text field in
-/// the Create Contact drawer.
-InputDecoration _contactFieldDecoration(String hint) {
-  const border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(10)),
-    borderSide: BorderSide(color: Color(0xFFEEEEEE)),
+/// Collapsing header for the Contacts page -- a port of
+/// _DynamicUtilityStatementHeaderDelegate's shrink-on-scroll behavior in
+/// utility_statement_screen.dart, swapping its Download/Add Adjustment
+/// button row for a single Create Contact button and dropping the month
+/// badge (Contacts has no month concept).
+class _DynamicContactsHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final double safeAreaTop;
+  final VoidCallback onCreateContact;
+
+  _DynamicContactsHeaderDelegate({
+    required this.surface,
+    required this.safeAreaTop,
+    required this.onCreateContact,
+  });
+
+  @override
+  double get minExtent => safeAreaTop + 90.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 174.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background: Orange top, White bottom -- the orange band retreats
+        // 1.5x faster than plain scroll progress so it's fully gone well
+        // before the header reaches minExtent, same as Utility Statement.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        // Expanded Content (Fades out) -- clipped in an OverflowBox because
+        // the box this sits in keeps shrinking continuously as the header
+        // collapses, so partway through the scroll it's already smaller than
+        // this Column's fixed content height. Opacity alone doesn't stop
+        // that from overflowing, so without this the mid-scroll frames show
+        // a RenderFlex overflow banner.
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Orange Header Content -- no back arrow, matches
+                        // Figma and this app's other pushed pages, which
+                        // rely on the system back gesture/button instead of
+                        // an in-header one.
+                        Container(
+                          height: safeAreaTop + 56,
+                          padding: EdgeInsets.only(
+                            top: safeAreaTop,
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                          ),
+                          child: const Row(
+                            children: [
+                              Text(
+                                'Contacts',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // White Card Content (Details)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                            top: 16,
+                          ),
+                          child: Text(
+                            'Necessary people for the Cottage - landlord, electrician, and the like.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              fontSize: 14,
+                              color: surface.foreground,
+                            ),
+                            maxLines: 2,
+                          ),
+                        ),
+                        // Guarantees the description doesn't touch the
+                        // separately-positioned button row below it (that
+                        // row is pinned to the header's own bottom edge, not
+                        // this Column's flow, so it needs its own explicit
+                        // gap here rather than relying on leftover space).
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Collapsed Content (Fades in)
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Contacts',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: surface.foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Common bottom element (Create Contact) -- always visible
+        // regardless of scroll position, same as Utility Statement's
+        // Download/Add Adjustment row.
+        Positioned(
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          bottom: 8,
+          child: _CreateContactButton(onTap: onCreateContact),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicContactsHeaderDelegate oldDelegate) {
+    return true;
+  }
+}
+
+/// Figma node 84:1123's field style: card-adjacent fill, themed border, 10px
+/// radius, 14/12 padding, muted hint text -- used by every text field in the
+/// Create Contact drawer.
+InputDecoration _contactFieldDecoration(CottageSurface surface, String hint) {
+  final border = OutlineInputBorder(
+    borderRadius: const BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: surface.border),
   );
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+    hintStyle: TextStyle(fontSize: 13, color: surface.mutedForeground),
     filled: true,
-    fillColor: const Color(0xFFFAFAFA),
+    fillColor: surface.background,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     border: border,
     enabledBorder: border,
@@ -455,14 +657,15 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFDE7356) : const Color(0xFFFAFAFA),
+          color: selected ? const Color(0xFFDE7356) : surface.background,
           border: Border.all(
-            color: selected ? const Color(0xFFDE7356) : const Color(0xFFEEEEEE),
+            color: selected ? const Color(0xFFDE7356) : surface.border,
           ),
           borderRadius: BorderRadius.circular(999),
         ),
@@ -470,7 +673,7 @@ class _CategoryChip extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? Colors.white : const Color(0xFF404040),
+            color: selected ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -484,6 +687,7 @@ class _CreateContactButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Align(
       alignment: Alignment.centerLeft,
       child: GestureDetector(
@@ -492,8 +696,8 @@ class _CreateContactButton extends StatelessWidget {
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFEEEEEE)),
+            color: surface.card,
+            border: Border.all(color: surface.border),
             borderRadius: BorderRadius.circular(1000),
             boxShadow: [
               BoxShadow(
@@ -506,14 +710,14 @@ class _CreateContactButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.add, size: 20, color: Color(0xFF404040)),
+              Icon(Icons.add, size: 20, color: surface.foreground),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Create Contact',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF404040),
+                  color: surface.foreground,
                 ),
               ),
             ],
@@ -539,12 +743,13 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFEEEEEE), width: 0.8),
+        color: surface.card,
+        border: Border.all(color: surface.border, width: 0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -558,10 +763,10 @@ class _ContactCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         contact.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                          color: Color(0xFF404040),
+                          color: surface.foreground,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -596,17 +801,17 @@ class _ContactCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
+                    color: surface.background,
                     border: Border.all(
-                      color: const Color(0xFFEEEEEE),
+                      color: surface.border,
                       width: 0.8,
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.delete_outline,
                     size: 16,
-                    color: Color(0xFF404040),
+                    color: surface.foreground,
                   ),
                 ),
               ),
@@ -653,22 +858,23 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
-        border: Border.all(color: const Color(0xFFEEEEEE), width: 0.8),
+        color: surface.background,
+        border: Border.all(color: surface.border, width: 0.8),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF404040)),
+          Icon(icon, size: 16, color: surface.foreground),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+              style: TextStyle(fontSize: 13, color: surface.foreground),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -686,6 +892,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final enabled = onTap != null;
     return GestureDetector(
       onTap: onTap,
@@ -693,8 +900,8 @@ class _ActionButton extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          color: surface.card,
+          border: Border.all(color: surface.border),
           borderRadius: BorderRadius.circular(1000),
           boxShadow: [
             BoxShadow(
@@ -710,9 +917,7 @@ class _ActionButton extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: enabled
-                  ? const Color(0xFF404040)
-                  : const Color(0xFFBBBBBB),
+              color: enabled ? surface.foreground : surface.mutedForeground,
             ),
             const SizedBox(width: 8),
             Text(
@@ -720,9 +925,7 @@ class _ActionButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: enabled
-                    ? const Color(0xFF404040)
-                    : const Color(0xFFBBBBBB),
+                color: enabled ? surface.foreground : surface.mutedForeground,
               ),
             ),
           ],

@@ -83,6 +83,21 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// Switches auth mode, clearing every mode's leftover error banner. Modes
+  /// toggle in place via [setState] rather than a route push (see class
+  /// doc), so this [State] -- and any error string set on it -- survives
+  /// across switches; without this, a stale "Google sign-in failed" (or any
+  /// other) banner from an earlier attempt in one mode could resurface after
+  /// switching to/from an unrelated mode.
+  void _switchMode(_AuthMode mode) {
+    setState(() {
+      _mode = mode;
+      _loginError = null;
+      _signupError = null;
+      _forgotError = null;
+    });
+  }
+
   Future<void> _submitLogin() async {
     if (!_loginFormKey.currentState!.validate()) return;
 
@@ -220,8 +235,21 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Without an explicit redirectTo, Supabase falls back to the
+      // project's dashboard "Site URL" -- which is the web app's own
+      // domain -- so the email link opens a browser straight into the web
+      // dashboard (the recovery session alone reads as "logged in" there)
+      // instead of ever reaching this app. Reusing the same custom-scheme
+      // redirect already registered for Google sign-in (see
+      // [SupabaseService.oauthRedirectUrl] and the matching intent-filter in
+      // AndroidManifest.xml/Info.plist -- already allow-listed in Supabase's
+      // Auth > URL Configuration > Redirect URLs for that flow) makes the
+      // link open this app instead, where supabase_flutter's built-in deep
+      // link handling picks up the recovery session and _AuthGate (main.dart)
+      // routes to [ResetPasswordScreen].
       await SupabaseService.client.auth.resetPasswordForEmail(
         _forgotEmailController.text.trim(),
+        redirectTo: SupabaseService.oauthRedirectUrl,
       );
       if (!mounted) return;
       setState(() => _forgotSuccess = true);
@@ -308,9 +336,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 12),
         OutlinedButton(
-          onPressed: () => setState(
-            () => _mode = isLogin ? _AuthMode.signup : _AuthMode.login,
-          ),
+          onPressed: () =>
+              _switchMode(isLogin ? _AuthMode.signup : _AuthMode.login),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.white,
             side: const BorderSide(color: Colors.white),
@@ -398,8 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.center,
                         child: GestureDetector(
-                          onTap: () =>
-                              setState(() => _mode = _AuthMode.forgotPassword),
+                          onTap: () => _switchMode(_AuthMode.forgotPassword),
                           child: const Text(
                             'Forgot password?',
                             style: TextStyle(
@@ -724,7 +750,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 Center(
                   child: GestureDetector(
-                    onTap: () => setState(() => _mode = _AuthMode.login),
+                    onTap: () => _switchMode(_AuthMode.login),
                     child: const Text(
                       'Back to sign in',
                       style: TextStyle(

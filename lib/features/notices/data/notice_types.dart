@@ -53,11 +53,22 @@ class NoticeTypeMeta {
   final IconData icon;
   final Color chipBg;
   final Color chipFg;
+  /// Which audiences this notice type may be sent to -- mirrors
+  /// NOTICE_TYPE_META[type].visibilities in notice-types.tsx, enforced both
+  /// client-side (audience picker options) and server-side (RLS check via
+  /// createNotice).
+  final List<NoticeVisibility> visibilities;
+  /// Whether a plain member (not super_admin) may create this notice type --
+  /// mirrors NOTICE_TYPE_META[type].memberCreatable, checked by
+  /// canCreateNoticeType.
+  final bool memberCreatable;
   const NoticeTypeMeta({
     required this.label,
     required this.icon,
     required this.chipBg,
     required this.chipFg,
+    required this.visibilities,
+    required this.memberCreatable,
   });
 }
 
@@ -67,38 +78,59 @@ const Map<NoticeType, NoticeTypeMeta> kNoticeTypeMeta = {
     icon: Icons.account_balance_wallet_outlined,
     chipBg: Color(0xFFFEF3C7),
     chipFg: Color(0xFF92400E),
+    visibilities: [NoticeVisibility.specific, NoticeVisibility.selected],
+    memberCreatable: false,
   ),
   NoticeType.meal: NoticeTypeMeta(
     label: 'Meal Plan',
     icon: Icons.restaurant_outlined,
     chipBg: Color(0xFFD1FAE5),
     chipFg: Color(0xFF065F46),
+    visibilities: [NoticeVisibility.everyone, NoticeVisibility.selected],
+    memberCreatable: true,
   ),
   NoticeType.general: NoticeTypeMeta(
     label: 'General Notice',
     icon: Icons.campaign_outlined,
     chipBg: Color(0xFFE0F2FE),
     chipFg: Color(0xFF075985),
+    visibilities: [NoticeVisibility.everyone, NoticeVisibility.selected],
+    memberCreatable: true,
   ),
   NoticeType.emergency: NoticeTypeMeta(
     label: 'Emergency',
     icon: Icons.warning_amber_rounded,
     chipBg: Color(0xFFFEE2E2),
     chipFg: Color(0xFF991B1B),
+    visibilities: [NoticeVisibility.everyone, NoticeVisibility.admins],
+    memberCreatable: true,
   ),
   NoticeType.personal: NoticeTypeMeta(
     label: 'Personal Reminder',
     icon: Icons.sticky_note_2_outlined,
     chipBg: Color(0xFFEDE9FE),
     chipFg: Color(0xFF5B21B6),
+    visibilities: [NoticeVisibility.specific, NoticeVisibility.selected],
+    // Super-admin-only: a Personal Reminder is admin-to-member ("pay your
+    // share today"), never member-to-member.
+    memberCreatable: false,
   ),
   NoticeType.maintenance: NoticeTypeMeta(
     label: 'Maintenance',
     icon: Icons.build_outlined,
     chipBg: Color(0xFFCCFBF1),
     chipFg: Color(0xFF115E59),
+    visibilities: [NoticeVisibility.everyone, NoticeVisibility.selected],
+    memberCreatable: true,
   ),
 };
+
+/// Can this profile create the given notice type? Mirrors the
+/// notices_insert RLS check / canCreateNoticeType in notice-types.tsx.
+bool canCreateNoticeType({required bool isSuperAdmin, required NoticeType type}) {
+  if (isSuperAdmin) return true;
+  return kNoticeTypeMeta[type]!.memberCreatable;
+}
 
 class NoticePriorityMeta {
   final String label;

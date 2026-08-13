@@ -7,6 +7,7 @@ import 'package:cottage/helpers/navigation_service.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/app_scaffold.dart';
 import 'package:cottage/common_widgets/confirm_modal.dart';
+import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import '../../contacts/presentation/contacts_screen.dart';
 import '../../months/presentation/months_screen.dart';
@@ -125,7 +126,7 @@ class _MenuScreenState extends State<MenuScreen> {
           _currentData = data;
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, context.bottomNavClearance),
             children: [
               Card(
                 child: Padding(

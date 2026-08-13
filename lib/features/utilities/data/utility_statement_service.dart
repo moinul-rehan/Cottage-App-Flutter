@@ -25,12 +25,17 @@ class UtilityStatementService {
     required String monthKey,
     required List<Profile> members,
   }) async {
+    // Both kinds, not just 'utility' -- a closed month's Meal Due/Balance
+    // carries into next month's statement exactly like a Utility
+    // Due/Advance does (see finance.ts's getCarryInTotalsByUser on the web
+    // app, which sums every row regardless of kind). Filtering to 'utility'
+    // here silently dropped carried-over meal balances from both the shown
+    // lines and the assignedCost/due totals below.
     final carryIns = await _client
         .from('utility_carry_ins')
-        .select('user_id, amount, source_month_key')
+        .select('user_id, amount, source_month_key, kind')
         .eq('cottage_id', cottageId)
-        .eq('month_key', monthKey)
-        .eq('kind', 'utility');
+        .eq('month_key', monthKey);
 
     final adjustments = await _client
         .from('utility_adjustments')
@@ -51,12 +56,18 @@ class UtilityStatementService {
       final userId = row['user_id'] as String;
       final amount = (row['amount'] as num).toDouble();
       final sourceLabel = _monthLabel(row['source_month_key'] as String);
-      final stateLabel = amount >= 0 ? 'Utility Due' : 'Utility Advanced';
+      final isUtility = row['kind'] == 'utility';
+      // Mirrors page.tsx's label exactly: Utility Due/Advanced vs Meal
+      // Due/Balance.
+      final kindLabel = isUtility ? 'Utility' : 'Meal';
+      final stateLabel = amount >= 0
+          ? 'Due'
+          : (isUtility ? 'Advanced' : 'Balance');
       linesByUser
           .putIfAbsent(userId, () => [])
           .add(
             UtilityStatementLine(
-              label: '$sourceLabel $stateLabel',
+              label: '$sourceLabel $kindLabel $stateLabel',
               amount: amount,
             ),
           );

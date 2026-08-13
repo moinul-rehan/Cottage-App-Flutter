@@ -181,11 +181,22 @@ class MemberService {
 
     // Otherwise (no cottage assigned OR soft-removed/inactive in this cottage),
     // restore and activate their profile so they immediately appear in the member list!
+    //
+    // Mirrors the web app's handleExistingEmail: the permission columns fall
+    // back to their table defaults (three of which are `true`), so a
+    // (re)added member must start as a plain member with every can_add_*
+    // grant explicitly zeroed out rather than inheriting stale/default
+    // permissions from before.
     final updateData = <String, dynamic>{
       'cottage_id': cottageId,
       'role': role,
       'is_active': true,
       'removed_at': null,
+      'can_add_expenses': false,
+      'can_add_bazaar': false,
+      'can_add_meals': false,
+      'can_add_deposit': false,
+      'can_add_notice': false,
     };
 
     final existingFirstName = profileRow['first_name'] as String?;

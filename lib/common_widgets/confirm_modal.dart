@@ -29,103 +29,104 @@ Future<bool> showConfirmModal(
     transitionBuilder: (ctx, animation, secondaryAnimation, child) {
       return FadeScaleTransition(animation: animation, child: child);
     },
-    pageBuilder: (ctx, animation, secondaryAnimation) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Container(
-        width: 311,
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
-              spreadRadius: -4,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: destructive
-                    ? const Color(0xFFFFE9E9)
-                    : const Color(0xFFFBE9E2),
-                shape: BoxShape.circle,
+    pageBuilder: (ctx, animation, secondaryAnimation) {
+      final surface = ctx.surface;
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          width: 311,
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          decoration: BoxDecoration(
+            color: surface.card,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+                spreadRadius: -4,
               ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: destructive
-                    ? const Color(0xFFCC4F4F)
-                    : CottageColors.primary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2A2A2A),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.4,
-                color: Color(0xFF707070),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ), // Figma: gap-16 + the button row's own pt-4
-            Row(
-              children: [
-                Expanded(
-                  child: _ConfirmModalButton(
-                    label: cancelLabel,
-                    onTap: () => Navigator.pop(ctx, false),
-                    background: Colors.white,
-                    textColor: const Color(0xFF404040),
-                    border: Border.all(color: const Color(0xFFEEEEEE)),
-                    shadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: destructive ? surface.toneRedBg : surface.toneOrangeBg,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ConfirmModalButton(
-                    label: confirmLabel,
-                    onTap: () => Navigator.pop(ctx, true),
-                    background: destructive
-                        ? const Color(0xFFCC4F4F)
-                        : CottageColors.primary,
-                    textColor: Colors.white,
-                  ),
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: destructive
+                      ? const Color(0xFFCC4F4F)
+                      : CottageColors.primary,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: surface.foreground,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: surface.mutedForeground,
+                ),
+              ),
+              const SizedBox(
+                height: 20,
+              ), // Figma: gap-16 + the button row's own pt-4
+              Row(
+                children: [
+                  Expanded(
+                    child: _ConfirmModalButton(
+                      label: cancelLabel,
+                      onTap: () => Navigator.pop(ctx, false),
+                      background: surface.card,
+                      textColor: surface.foreground,
+                      border: Border.all(color: surface.border),
+                      shadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ConfirmModalButton(
+                      label: confirmLabel,
+                      onTap: () => Navigator.pop(ctx, true),
+                      background: destructive
+                          ? const Color(0xFFCC4F4F)
+                          : CottageColors.primary,
+                      textColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
   return result ?? false;
 }

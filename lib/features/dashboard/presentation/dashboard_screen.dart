@@ -181,7 +181,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 ),
                 SliverPadding(
-                  padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    padding,
+                    16,
+                    padding,
+                    context.bottomNavClearance,
+                  ),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       PinNoticeCard(profile: profile),
@@ -197,7 +202,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                         totalMeals: data.totalMeals,
                         totalMealCost: data.totalBazaar,
                       ),
-                      const SizedBox(height: 24),
                     ]),
                   ),
                 ),
@@ -226,6 +230,7 @@ class _BazaarDutySection extends StatelessWidget {
     if (data.bazaarDuties.isEmpty) return const SizedBox.shrink();
     return BazaarDutyRoster(
       duties: data.bazaarDuties,
+      cottageId: profile.cottageId,
       membersById: data.membersById,
       currentUserId: profile.id,
     );

@@ -39,4 +39,26 @@ extension ResponsiveContext on BuildContext {
     if (isMedium) return 2;
     return 3;
   }
+
+  /// Bottom padding a scrollable needs so its last item clears the floating
+  /// pill nav bar instead of being hidden behind it, with only a small
+  /// visual gap left over. Backed by [measuredNavBarFootprint] -- an actual
+  /// measurement of the nav bar's rendered position (see
+  /// bottom_nav_shell.dart's `_NavBarFootprintMeasurer`) rather than
+  /// recomputed `SafeArea`/`MediaQuery` math, which drifted from the real
+  /// on-device layout (some Android nav-bar/inset combinations don't behave
+  /// the way `extendBody` + `SafeArea` math predicts on paper). Only needed
+  /// by screens that live inside BottomNavShell's IndexedStack (Dashboard/
+  /// Meal/Utilities/Menu/Notices/Requests tabs); screens reached via
+  /// Navigator.push sit above the shell and don't need it (though adding it
+  /// there is harmless).
+  double get bottomNavClearance => measuredNavBarFootprint.value + 8;
 }
+
+/// Distance from the very bottom of the screen to the top of the floating
+/// pill nav bar, in logical pixels -- kept up to date by BottomNavShell's
+/// `_NavBarFootprintMeasurer`, which measures the nav bar's actual rendered
+/// position after every layout. Starts at a reasonable guess so the very
+/// first frame (before the nav bar has measured itself even once) isn't
+/// completely unpadded.
+final ValueNotifier<double> measuredNavBarFootprint = ValueNotifier<double>(76);

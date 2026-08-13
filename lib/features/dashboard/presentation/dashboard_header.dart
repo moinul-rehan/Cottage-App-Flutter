@@ -309,9 +309,9 @@ class _DashboardNavRowState extends State<DashboardNavRow> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.surface.card,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+                border: Border.all(color: context.surface.border, width: 1),
               ),
               alignment: Alignment.center,
               child: Theme(
@@ -327,11 +327,11 @@ class _DashboardNavRowState extends State<DashboardNavRow> {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+                  border: Border.all(color: context.surface.border, width: 1),
                 ),
                 child: CircleAvatar(
                 radius: 19,
-                backgroundColor: Colors.white,
+                backgroundColor: context.surface.card,
                 backgroundImage: widget.profile.avatarUrl != null &&
                         widget.profile.avatarUrl!.isNotEmpty
                     ? NetworkImage(widget.profile.avatarUrl!)
@@ -371,9 +371,9 @@ class _Pill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surface.card,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+          border: Border.all(color: context.surface.border, width: 1),
         ),
         child: child,
       ),
@@ -395,9 +395,9 @@ class _IconPill extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surface.card,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+          border: Border.all(color: context.surface.border, width: 1),
         ),
         child: Icon(icon, size: 22, color: iconColor ?? CottageColors.primary),
       ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/meal_models.dart';
 import '../data/meal_service.dart';
 import 'package:cottage/models/profile.dart';
@@ -215,7 +215,9 @@ class _MealScreenState extends State<MealScreen>
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
+        builder: (ctx, setSheetState) {
+          final surface = ctx.surface;
+          return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -246,12 +248,12 @@ class _MealScreenState extends State<MealScreen>
                 },
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Meal count per member',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  color: Color(0xFF17191E),
+                  color: surface.foreground,
                 ),
               ),
               const SizedBox(height: 16),
@@ -285,7 +287,8 @@ class _MealScreenState extends State<MealScreen>
               ),
             ],
           ),
-        ),
+        );
+        },
       ),
     );
   }
@@ -394,6 +397,10 @@ class _MealScreenState extends State<MealScreen>
     final descCtrl = TextEditingController();
     final now = DateTime.now();
     String selectedDate = _isoDate(now);
+    // Mirrors the web app's BazaarForm "credit_deposit" checkbox -- the
+    // service already supported this (MealService.addBazaarEntry's
+    // creditDeposit param), it just had no way to turn it on from this UI.
+    bool creditDeposit = false;
 
     showCottageSheet(
       context: context,
@@ -457,6 +464,56 @@ class _MealScreenState extends State<MealScreen>
                 ),
                 prefixText: '৳',
               ),
+              if (selectedUserId != null) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () =>
+                      setSheetState(() => creditDeposit = !creditDeposit),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: _drawerFieldDecoration(ctx.surface),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: creditDeposit,
+                          onChanged: (v) =>
+                              setSheetState(() => creditDeposit = v ?? false),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text.rich(
+                              TextSpan(
+                                text: 'Cost deposit to ',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: ctx.surface.foreground,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: _memberName(
+                                      data.members,
+                                      selectedUserId,
+                                    ),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text:
+                                        ' — credits this amount to their meal deposit',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               _DrawerSaveButton(
                 label: 'Save Bazar Cost',
@@ -471,6 +528,7 @@ class _MealScreenState extends State<MealScreen>
                     date: selectedDate,
                     cottageId: data.profile.cottageId,
                     description: descCtrl.text.trim(),
+                    creditDeposit: creditDeposit,
                   );
                   _refresh();
                 },
@@ -1141,7 +1199,7 @@ class _DailyMealsTab extends StatelessWidget {
         ),
         itemCount: dates.length + 1,
         itemBuilder: (context, index) {
-          if (index == dates.length) return const SizedBox(height: 80);
+          if (index == dates.length) return SizedBox(height: context.bottomNavClearance);
           final date = dates[index];
           final entries = grouped[date]!;
 
@@ -1340,7 +1398,7 @@ class _BazaarTab extends StatelessWidget {
         ),
         itemCount: data.bazaar.length + 1,
         itemBuilder: (context, index) {
-          if (index == data.bazaar.length) return const SizedBox(height: 80);
+          if (index == data.bazaar.length) return SizedBox(height: context.bottomNavClearance);
           final entry = data.bazaar[index];
 
           return Container(
@@ -1495,9 +1553,7 @@ class _BazaarTab extends StatelessWidget {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFFDEFEC,
-                                  ), // Soft peach tint
+                                  color: surface.toneOrangeBg, // Soft peach tint
                                   border: Border.all(
                                     color: surface.border,
                                     width: 0.8,
@@ -1510,9 +1566,9 @@ class _BazaarTab extends StatelessWidget {
                                           entry.description!.isNotEmpty)
                                       ? entry.description!
                                       : 'No items detailed',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
-                                    color: Color(0xFF404040),
+                                    color: surface.foreground,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -1647,7 +1703,7 @@ class _DepositTab extends StatelessWidget {
         ),
         itemCount: data.deposits.length + 1,
         itemBuilder: (context, index) {
-          if (index == data.deposits.length) return const SizedBox(height: 80);
+          if (index == data.deposits.length) return SizedBox(height: context.bottomNavClearance);
           final entry = data.deposits[index];
 
           return Container(
@@ -1784,9 +1840,9 @@ class _DepositTab extends StatelessWidget {
                                   (entry.note != null && entry.note!.isNotEmpty)
                                       ? entry.note!
                                       : 'Manual deposit',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
-                                    color: Color(0xFF888888), // Muted grey
+                                    color: surface.mutedForeground, // Muted grey
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -1979,12 +2035,12 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
                         right: context.responsivePadding,
                         top: 16,
                       ),
-                      child: const Text(
+                      child: Text(
                         "Full meal, deposit and cost records for every member in the active month.",
                         style: TextStyle(
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
-                          color: Color(0xFF303030),
+                          color: surface.foreground,
                         ),
                         maxLines: 2,
                       ),
@@ -2116,9 +2172,9 @@ class _DynamicMealHeaderDelegate extends SliverPersistentHeaderDelegate {
 /// on the tab bar/member-initial chips.
 const _kDrawerAccent = Color(0xFFD1593B);
 
-BoxDecoration _drawerFieldDecoration() => BoxDecoration(
-  color: const Color(0xFFFAFAFA),
-  border: Border.all(color: const Color(0xFFEEEEEE)),
+BoxDecoration _drawerFieldDecoration(CottageSurface surface) => BoxDecoration(
+  color: surface.background,
+  border: Border.all(color: surface.border),
   borderRadius: BorderRadius.circular(10),
 );
 
@@ -2136,17 +2192,18 @@ class _DrawerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Row(
       children: [
-        Icon(icon, size: 20, color: const Color(0xFF17191E)),
+        Icon(icon, size: 20, color: surface.foreground),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 17,
-              color: Color(0xFF17191E),
+              color: surface.foreground,
             ),
           ),
         ),
@@ -2157,10 +2214,10 @@ class _DrawerHeader extends StatelessWidget {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFFAFAFA),
+              color: surface.background,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.close, size: 16, color: Color(0xFF17191E)),
+            child: Icon(Icons.close, size: 16, color: surface.foreground),
           ),
         ),
       ],
@@ -2175,13 +2232,11 @@ class _DrawerFieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          text,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
-        ),
+        Text(text, style: TextStyle(fontSize: 13, color: surface.foreground)),
         if (required) ...[
           const SizedBox(width: 2),
           const Text(
@@ -2206,6 +2261,7 @@ class _DrawerDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2215,22 +2271,19 @@ class _DrawerDateField extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: _drawerFieldDecoration(),
+            decoration: _drawerFieldDecoration(surface),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.calendar_month_outlined,
                   size: 16,
-                  color: Color(0xFF404040),
+                  color: surface.foreground,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     date,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF404040),
-                    ),
+                    style: TextStyle(fontSize: 13, color: surface.foreground),
                   ),
                 ),
               ],
@@ -2256,6 +2309,7 @@ class _DrawerMemberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2265,7 +2319,7 @@ class _DrawerMemberField extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: _drawerFieldDecoration(),
+            decoration: _drawerFieldDecoration(surface),
             child: Row(
               children: [
                 Expanded(
@@ -2274,15 +2328,15 @@ class _DrawerMemberField extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       color: selectedName == null
-                          ? const Color(0xFFAAAAAA)
-                          : const Color(0xFF404040),
+                          ? surface.mutedForeground
+                          : surface.foreground,
                     ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.keyboard_arrow_down_rounded,
                   size: 16,
-                  color: Color(0xFF404040),
+                  color: surface.foreground,
                 ),
               ],
             ),
@@ -2313,6 +2367,7 @@ class _DrawerTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2320,7 +2375,7 @@ class _DrawerTextField extends StatelessWidget {
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: _drawerFieldDecoration(),
+          decoration: _drawerFieldDecoration(surface),
           child: Row(
             crossAxisAlignment: maxLines > 1
                 ? CrossAxisAlignment.start
@@ -2329,10 +2384,10 @@ class _DrawerTextField extends StatelessWidget {
               if (prefixText != null) ...[
                 Text(
                   prefixText!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFAAAAAA),
+                    color: surface.mutedForeground,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -2342,15 +2397,12 @@ class _DrawerTextField extends StatelessWidget {
                   controller: controller,
                   keyboardType: keyboardType,
                   maxLines: maxLines,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF404040),
-                  ),
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
                   decoration: InputDecoration(
                     hintText: hint,
-                    hintStyle: const TextStyle(
+                    hintStyle: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFFAAAAAA),
+                      color: surface.mutedForeground,
                     ),
                     filled: false,
                     fillColor: Colors.transparent,
@@ -2394,7 +2446,7 @@ class _DrawerSaveButton extends StatelessWidget {
 /// minus/count/plus stepper (replacing the old lunch/dinner split inputs --
 /// the Figma design and the underlying `daily_meals.count` column are both
 /// a single per-member count, so the stepper is the more faithful UI).
-class _MemberMealRow extends StatelessWidget {
+class _MemberMealRow extends StatefulWidget {
   final Profile member;
   final double count;
   final ValueChanged<double> onChanged;
@@ -2405,13 +2457,63 @@ class _MemberMealRow extends StatelessWidget {
   });
 
   @override
+  State<_MemberMealRow> createState() => _MemberMealRowState();
+}
+
+class _MemberMealRowState extends State<_MemberMealRow> {
+  late final _controller = TextEditingController(text: _format(widget.count));
+  final _focusNode = FocusNode();
+
+  static String _format(double v) => v.toStringAsFixed(v % 1 == 0 ? 0 : 1);
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) _commit();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _MemberMealRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only resync the field's text from the parent's value while it isn't
+    // being actively typed into, so a +/- tap (which changes widget.count
+    // from outside this State) updates the display without clobbering
+    // whatever the user is mid-typing.
+    if (!_focusNode.hasFocus && oldWidget.count != widget.count) {
+      _controller.text = _format(widget.count);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _commit() {
+    final parsed = double.tryParse(_controller.text);
+    if (parsed == null || parsed < 0) {
+      _controller.text = _format(widget.count);
+      return;
+    }
+    _controller.text = _format(parsed);
+    if (parsed != widget.count) widget.onChanged(parsed);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
+    final member = widget.member;
+    final count = widget.count;
     final initial = member.displayName.isNotEmpty
         ? member.displayName[0].toUpperCase()
         : '?';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: _drawerFieldDecoration(),
+      decoration: _drawerFieldDecoration(surface),
       child: Row(
         children: [
           Container(
@@ -2419,7 +2521,7 @@ class _MemberMealRow extends StatelessWidget {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFFBEAE5),
+              color: surface.toneOrangeBg,
               borderRadius: BorderRadius.circular(16),
               image: (member.avatarUrl != null && member.avatarUrl!.isNotEmpty)
                   ? DecorationImage(
@@ -2443,30 +2545,52 @@ class _MemberMealRow extends StatelessWidget {
           Expanded(
             child: Text(
               member.displayName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
-                color: Color(0xFF17191E),
+                color: surface.foreground,
               ),
             ),
           ),
           _StepperButton(
             icon: Icons.remove,
-            onTap: count > 0 ? () => onChanged(count - 1) : null,
+            // Steps by half a meal, not a whole one -- meal counts are
+            // commonly fractional here (skip dinner but eat lunch = 0.5),
+            // so stepping by 1 could never reach a half-meal value at all.
+            onTap: count > 0 ? () => widget.onChanged(count - 0.5) : null,
           ),
           SizedBox(
-            width: 24,
-            child: Text(
-              count.toStringAsFixed(count % 1 == 0 ? 0 : 1),
+            width: 40,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              // Free typing for any count (e.g. 1.25) -- the +/- buttons
+              // above only step by 0.5, this is the direct-entry path for
+              // anything else, per the ask to keep both.
+              onSubmitted: (_) => _commit(),
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
-                color: Color(0xFF17191E),
+                color: surface.foreground,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 4),
+                border: InputBorder.none,
+                // Overrides the app-wide InputDecorationTheme's
+                // filled:true/fillColor default -- this field sits inside
+                // the row's own field background, so it should read as
+                // plain inline text, not a nested filled box.
+                filled: false,
               ),
             ),
           ),
-          _StepperButton(icon: Icons.add, onTap: () => onChanged(count + 1)),
+          _StepperButton(
+            icon: Icons.add,
+            onTap: () => widget.onChanged(count + 0.5),
+          ),
         ],
       ),
     );
@@ -2480,6 +2604,7 @@ class _StepperButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -2488,15 +2613,13 @@ class _StepperButton extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 6),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFFEFEFEF),
+          color: surface.muted,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(
           icon,
           size: 16,
-          color: onTap == null
-              ? const Color(0xFFBBBBBB)
-              : const Color(0xFF17191E),
+          color: onTap == null ? surface.mutedForeground : surface.foreground,
         ),
       ),
     );

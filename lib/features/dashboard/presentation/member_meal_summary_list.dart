@@ -34,7 +34,7 @@ class MemberMealSummaryList extends StatelessWidget {
       children: [
         Text(
           'Member Meal Summary',
-          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500, color: const Color(0xFF242424)),
+          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500, color: context.surface.foreground),
         ),
         const SizedBox(height: 16),
         _CottageMealSummaryCard(mealRate: mealRate, totalMeals: totalMeals, totalMealCost: totalMealCost),
@@ -66,11 +66,12 @@ class _CottageMealSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEFEA),
+        color: surface.toneOrangeBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1)),
@@ -95,7 +96,7 @@ class _CottageMealSummaryCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Cottage Meal Summary',
-                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF404040)),
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: surface.foreground),
                 ),
               ),
             ],
@@ -103,11 +104,11 @@ class _CottageMealSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             _tk(mealRate),
-            style: GoogleFonts.poppins(fontSize: 21, fontWeight: FontWeight.w700, color: const Color(0xFF404040)),
+            style: GoogleFonts.poppins(fontSize: 21, fontWeight: FontWeight.w700, color: surface.foreground),
           ),
           Text(
             'Meal Rate',
-            style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFFAAAAAA)),
+            style: GoogleFonts.poppins(fontSize: 15, color: surface.mutedForeground),
           ),
           const SizedBox(height: 12),
           Row(
@@ -131,18 +132,19 @@ class _CottageStatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.58),
+        color: surface.card.withValues(alpha: 0.58),
         borderRadius: BorderRadius.circular(13),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFFAAAAAA))),
-          Text(value, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w500, color: const Color(0xFF404040))),
+          Text(label, style: GoogleFonts.poppins(fontSize: 15, color: surface.mutedForeground)),
+          Text(value, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w500, color: surface.foreground)),
         ],
       ),
     );
@@ -231,6 +233,7 @@ class _MemberCard extends StatelessWidget {
     void showDetails(BuildContext context) {
       showModalBottomSheet(
         context: context,
+        backgroundColor: surface.card,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -339,11 +342,14 @@ class _MemberCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => showDetails(context),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        // Figma node 177:2217 ("CC item"): p-14, rounded-16, gap-8 between
+        // the header/stat rows -- was p-16/radius-12/gap-24+20, which is why
+        // the photo and every text line read oversized against the design.
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          color: surface.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: surface.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -358,10 +364,10 @@ class _MemberCard extends StatelessWidget {
             Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   child: SizedBox(
-                    width: 52,
-                    height: 52,
+                    width: 35,
+                    height: 35,
                     child: row.avatarUrl != null && row.avatarUrl!.isNotEmpty
                         ? Image.network(
                             row.avatarUrl!,
@@ -379,19 +385,19 @@ class _MemberCard extends StatelessWidget {
                     children: [
                       Text(
                         row.displayName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF374151),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: surface.foreground,
                         ),
                       ),
                       if (activeOrNextDuty != null) ...[
                         const SizedBox(height: 2),
                         Text(
                           '${_formatDate(activeOrNextDuty.startDate)} - ${_formatDate(activeOrNextDuty.endDate)} (Bazar Duty)',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF9CA3AF),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: surface.mutedForeground,
                           ),
                         ),
                       ],
@@ -400,7 +406,7 @@ class _MemberCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -419,7 +425,7 @@ class _MemberCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -436,7 +442,7 @@ class _MemberCard extends StatelessWidget {
                     surface: surface,
                     valueColor: balancePositive
                         ? const Color(0xFF289029)
-                        : const Color(0xFFFF0000),
+                        : CottageColors.destructive,
                   ),
                 ),
               ],
@@ -468,15 +474,14 @@ class _Stat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+          style: TextStyle(fontSize: 12, color: surface.mutedForeground),
         ),
-        const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: valueColor ?? const Color(0xFF374151),
+            color: valueColor ?? surface.foreground,
           ),
         ),
       ],

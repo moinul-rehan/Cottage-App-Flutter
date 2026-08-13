@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// A row from the `notifications` table. Mirrors the shape returned by
 /// getNotifications/getUnreadCount in src/lib/data/notifications.ts.
@@ -103,6 +104,33 @@ IconData notificationIconFor(String type) {
       return Icons.warning_amber_outlined;
     default:
       return Icons.notifications_outlined;
+  }
+}
+
+// Same default/override as MemberService.sendBackendInvite's BACKEND_URL --
+// a notification's `link` can be a path relative to the web app (e.g.
+// "/notices/abc123"), so it needs the same base to resolve against.
+const _webAppBaseUrl = String.fromEnvironment(
+  'BACKEND_URL',
+  defaultValue: 'https://cottagee.me',
+);
+
+/// Opens a notification's `link` field -- an absolute URL launched as-is, or
+/// a web-app-relative path resolved against [_webAppBaseUrl] first. Returns
+/// false (instead of throwing) if there's nothing to open or the launch
+/// failed, so callers can surface their own error toast.
+Future<bool> openNotificationLink(String? link) async {
+  if (link == null || link.trim().isEmpty) return false;
+  final trimmed = link.trim();
+  final resolved = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : '$_webAppBaseUrl${trimmed.startsWith('/') ? trimmed : '/$trimmed'}';
+  final uri = Uri.tryParse(resolved);
+  if (uri == null) return false;
+  try {
+    return await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    return false;
   }
 }
 

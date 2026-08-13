@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'features/dashboard/data/dashboard_data.dart';
@@ -145,17 +146,29 @@ class _AuthGate extends StatefulWidget {
 class _AuthGateState extends State<_AuthGate> {
   StreamSubscription<AuthState>? _subscription;
 
+  // Set while the current session only exists because the user tapped a
+  // "reset password" email link (AuthChangeEvent.passwordRecovery). That
+  // session alone would otherwise satisfy the `session != null` check below
+  // and drop them straight into the app without ever letting them choose a
+  // new password -- see [ResetPasswordScreen].
+  bool _passwordRecovery = false;
+
   @override
   void initState() {
     super.initState();
     _subscription = SupabaseService.client.auth.onAuthStateChange.listen((
       state,
     ) {
+      if (state.event == AuthChangeEvent.passwordRecovery) {
+        setState(() => _passwordRecovery = true);
+        return;
+      }
       if (state.session != null) {
         NavigationService.popToRoot();
         PushNotificationService.registerToken();
       } else if (state.event == AuthChangeEvent.signedOut ||
           state.session == null) {
+        if (_passwordRecovery) setState(() => _passwordRecovery = false);
         NavigationService.popToRoot();
         PushNotificationService.unregisterToken();
       }
@@ -181,13 +194,22 @@ class _AuthGateState extends State<_AuthGate> {
             snapshot.data?.session ?? SupabaseService.currentSession;
         if (session == null) return const LoginScreen();
 
+        if (_passwordRecovery) {
+          return ResetPasswordScreen(
+            onCompleted: () => setState(() => _passwordRecovery = false),
+          );
+        }
+
         final preloaded =
             (widget.preloadedDashboard != null &&
                 widget.preloadedDashboard!.$1.id == session.user.id)
             ? widget.preloadedDashboard
             : null;
 
-        return BottomNavShell(preloadedDashboard: preloaded);
+        return BottomNavShell(
+          key: BottomNavShell.shellKey,
+          preloadedDashboard: preloaded,
+        );
       },
     );
   }

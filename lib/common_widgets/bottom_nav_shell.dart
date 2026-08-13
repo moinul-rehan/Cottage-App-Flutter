@@ -11,6 +11,7 @@ import 'package:cottage/features/requests/presentation/request_screen.dart';
 import 'package:cottage/features/utilities/presentation/utilities_screen.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/models/profile.dart';
+import 'package:cottage/common_widgets/responsive_utils.dart';
 
 class _NavTabData {
   final IconData icon;
@@ -37,13 +38,21 @@ class BottomNavShell extends StatefulWidget {
   /// mount.
   final (Profile, DashboardData)? preloadedDashboard;
 
+  /// Lets code outside this file (e.g. a notification's tap handler) switch
+  /// tabs and, optionally, trigger that tab's own quick-action -- the same
+  /// mechanism the speed-dial items above already use internally, just
+  /// exposed for callers that aren't `BottomNavShellState` itself. See
+  /// [BottomNavShellState.openTab].
+  static final GlobalKey<BottomNavShellState> shellKey =
+      GlobalKey<BottomNavShellState>();
+
   const BottomNavShell({super.key, this.preloadedDashboard});
 
   @override
-  State<BottomNavShell> createState() => _BottomNavShellState();
+  State<BottomNavShell> createState() => BottomNavShellState();
 }
 
-class _BottomNavShellState extends State<BottomNavShell> {
+class BottomNavShellState extends State<BottomNavShell> {
   int _index = 0;
   String? _activeSheet;
   final _requestService = RequestService();
@@ -59,6 +68,11 @@ class _BottomNavShellState extends State<BottomNavShell> {
 
   bool get _canManageMealRequests =>
       (_profile?.canAddMeals ?? false) || (_profile?.canAddBazaar ?? false);
+
+  /// Public read of the same flag, for callers outside this State deciding
+  /// whether tab 1 is the Requests inbox or Notices (see
+  /// notification_navigation.dart).
+  bool get canManageMealRequests => _canManageMealRequests;
 
   @override
   void initState() {
@@ -138,6 +152,34 @@ class _BottomNavShellState extends State<BottomNavShell> {
       builder: (_) => MenuScreen(key: MenuScreen.menuScreenKey),
     ),
   ];
+
+  /// Public counterpart to the speed-dial items' own `setState(() =>
+  /// _index = N)` + `triggerAction(...)` pattern above, for callers outside
+  /// this State (e.g. a notification's tap handler routing to the tab that
+  /// notification is about). [action] is forwarded to that tab's own
+  /// `triggerAction`, same as the speed dial does, once the tab has had a
+  /// frame to build (the target screen's State may not exist yet on the
+  /// very first switch to it).
+  void openTab(int index, {String? action}) {
+    setState(() {
+      _index = index;
+      _activeSheet = null;
+    });
+    if (action == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      switch (index) {
+        case 2:
+          MealScreen.mealScreenKey.currentState?.triggerAction(action);
+          break;
+        case 3:
+          UtilitiesScreen.utilitiesScreenKey.currentState?.triggerAction(action);
+          break;
+        case 4:
+          MenuScreen.menuScreenKey.currentState?.triggerAction(action);
+          break;
+      }
+    });
+  }
 
   void _handleTabTap(int idx) {
     if (idx == 0 || idx == 1) {
@@ -440,19 +482,58 @@ class _BottomNavShellState extends State<BottomNavShell> {
             index: _index,
             children: [for (final tab in _tabs) tab.builder(context)],
           ),
-          bottomNavigationBar: SafeArea(
-            minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: _FloatingNavBar(
-              tabs: _tabs,
-              index: _index,
-              activeSheet: _activeSheet,
-              onTap: _handleTabTap,
+          bottomNavigationBar: _NavBarFootprintMeasurer(
+            child: SafeArea(
+              minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: _FloatingNavBar(
+                tabs: _tabs,
+                index: _index,
+                activeSheet: _activeSheet,
+                onTap: _handleTabTap,
+              ),
             ),
           ),
         ),
         if (_activeSheet != null) _buildSpeedDialOverlay(screenWidth, surface),
       ],
     );
+  }
+}
+
+/// Measures where [child] (the SafeArea-wrapped floating nav bar) actually
+/// renders and publishes the distance from its top edge to the bottom of
+/// the screen into [measuredNavBarFootprint] -- see that field's doc for
+/// why this measures instead of recomputing the SafeArea/inset math.
+class _NavBarFootprintMeasurer extends StatefulWidget {
+  final Widget child;
+  const _NavBarFootprintMeasurer({required this.child});
+
+  @override
+  State<_NavBarFootprintMeasurer> createState() => _NavBarFootprintMeasurerState();
+}
+
+class _NavBarFootprintMeasurerState extends State<_NavBarFootprintMeasurer> {
+  final _key = GlobalKey();
+
+  void _measure(Duration _) {
+    if (!mounted) return;
+    final box = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final topLeft = box.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final footprint = screenHeight - topLeft.dy;
+    if (footprint > 0 && (measuredNavBarFootprint.value - footprint).abs() > 0.5) {
+      measuredNavBarFootprint.value = footprint;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Re-measure after every layout this widget goes through (first frame,
+    // rotation, keyboard show/hide, etc.) rather than just once in
+    // initState, since the nav bar's on-screen position can change.
+    WidgetsBinding.instance.addPostFrameCallback(_measure);
+    return KeyedSubtree(key: _key, child: widget.child);
   }
 }
 

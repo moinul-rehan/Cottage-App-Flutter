@@ -139,7 +139,7 @@ class _SummaryRow extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F6),
+        color: surface.background,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -147,7 +147,7 @@ class _SummaryRow extends StatelessWidget {
           Icon(icon, size: 18, color: CottageColors.primary),
           const SizedBox(width: 10),
           Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: surface.mutedForeground))),
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: valueColor ?? const Color(0xFF17191E))),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: valueColor ?? surface.foreground)),
         ],
       ),
     );

@@ -7,22 +7,39 @@ import 'package:cottage/helpers/supabase_service.dart';
 class BazaarDutyService {
   final _client = SupabaseService.client;
 
-  /// Flat, sorted list of every assigned duty in the cottage -- past,
-  /// current, and upcoming -- for the Dashboard's shared roster and the
-  /// Member Summary cards. Previously filtered to `end_date >= today`,
-  /// which made a member's duty vanish from both the roster and their
-  /// summary card the moment it ended instead of just no longer being
-  /// highlighted as active; every assigned duty should stay visible.
+  /// [start, end) date bounds for a "YYYY-MM" month key -- same shape as
+  /// monthRange() in src/lib/data/finance.ts.
+  (String start, String end) _monthRange(String monthKey) {
+    final parts = monthKey.split('-');
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final start = DateTime.utc(year, month, 1);
+    final end = DateTime.utc(year, month + 1, 1);
+    String iso(DateTime d) => d.toIso8601String().substring(0, 10);
+    return (iso(start), iso(end));
+  }
+
+  /// Every duty overlapping [monthKey]'s date range -- mirrors
+  /// getCottageBazaarDuties(supabase, cottageId, monthKey) in
+  /// src/lib/data/bazaar-duty.ts (`start_date < monthEnd AND end_date >=
+  /// monthStart`) exactly. Used for the Dashboard's shared roster and the
+  /// Member Summary cards, so switching the cottage's active month changes
+  /// which duties show there -- this used to fetch the last 100 duties
+  /// globally with no month scoping at all, so the roster kept showing
+  /// whatever duty was nearest to today's real date regardless of which
+  /// month was actually set active.
   Future<List<BazaarDuty>> getCottageBazaarDuties(
-    String cottageId, {
-    int limit = 100,
-  }) async {
+    String cottageId,
+    String monthKey,
+  ) async {
+    final (start, end) = _monthRange(monthKey);
     final rows = await _client
         .from('bazaar_duties')
         .select('id, user_id, start_date, end_date, note')
         .eq('cottage_id', cottageId)
-        .order('start_date', ascending: false)
-        .limit(limit);
+        .lt('start_date', end)
+        .gte('end_date', start)
+        .order('start_date');
     return (rows as List)
         .map((r) => BazaarDuty.fromMap(r as Map<String, dynamic>))
         .toList();

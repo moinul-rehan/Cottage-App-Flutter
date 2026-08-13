@@ -158,9 +158,24 @@ class _NoticesScreenState extends State<NoticesScreen>
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final dueAmountCtrl = TextEditingController();
-    NoticeType type = NoticeType.general;
+    // Only the notice types this profile is allowed to create -- mirrors
+    // CreateNoticeForm's allowedTypes (ALL_TYPES.filter(canCreateNoticeType)).
+    final allowedTypes = _typeGridOrder
+        .where(
+          (t) => canCreateNoticeType(
+            isSuperAdmin: profile.isSuperAdmin,
+            type: t,
+          ),
+        )
+        .toList();
+    NoticeType type = allowedTypes.contains(NoticeType.general)
+        ? NoticeType.general
+        : allowedTypes.first;
     NoticePriority priority = NoticePriority.normal;
-    NoticeVisibility visibility = NoticeVisibility.selected;
+    // Default to the type's first allowed audience, same as targetOptions in
+    // CreateNoticeForm -- "selected" isn't valid for every type (e.g.
+    // emergency only allows everyone/admins).
+    NoticeVisibility visibility = kNoticeTypeMeta[type]!.visibilities.first;
     final targetMemberIds = <String>{};
     bool publishNow = true;
     DateTime? scheduledPublishAt;
@@ -177,6 +192,7 @@ class _NoticesScreenState extends State<NoticesScreen>
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
+          final surface = sheetContext.surface;
           DateTime resolvedPublishAt() => publishNow ? DateTime.now() : (scheduledPublishAt ?? DateTime.now());
           DateTime resolvedExpiresAt() =>
               expireIn7Days ? resolvedPublishAt().add(const Duration(days: 7)) : (customExpiresAt ?? resolvedPublishAt().add(const Duration(days: 7)));
@@ -232,24 +248,39 @@ class _NoticesScreenState extends State<NoticesScreen>
               const SizedBox(height: 10),
               Column(
                 children: [
-                  for (int row = 0; row < 2; row++) ...[
+                  for (int row = 0; row * 3 < allowedTypes.length; row++) ...[
                     if (row > 0) const SizedBox(height: 8),
                     Row(
                       children: [
                         for (int col = 0; col < 3; col++) ...[
                           if (col > 0) const SizedBox(width: 8),
-                          Expanded(
-                            child: Builder(
-                              builder: (_) {
-                                final t = _typeGridOrder[row * 3 + col];
-                                return _NoticeTypeOption(
-                                  type: t,
-                                  selected: type == t,
-                                  onTap: () => setSheetState(() => type = t),
-                                );
-                              },
-                            ),
-                          ),
+                          if (row * 3 + col < allowedTypes.length)
+                            Expanded(
+                              child: Builder(
+                                builder: (_) {
+                                  final t = allowedTypes[row * 3 + col];
+                                  return _NoticeTypeOption(
+                                    type: t,
+                                    selected: type == t,
+                                    onTap: () => setSheetState(() {
+                                      type = t;
+                                      // Reset audience if the current pick
+                                      // isn't valid for the newly-selected
+                                      // type -- mirrors CreateNoticeForm's
+                                      // handleTypeChange.
+                                      final allowed =
+                                          kNoticeTypeMeta[t]!.visibilities;
+                                      if (!allowed.contains(visibility)) {
+                                        visibility = allowed.first;
+                                        targetMemberIds.clear();
+                                      }
+                                    }),
+                                  );
+                                },
+                              ),
+                            )
+                          else
+                            const Expanded(child: SizedBox.shrink()),
                         ],
                       ],
                     ),
@@ -313,57 +344,62 @@ class _NoticesScreenState extends State<NoticesScreen>
               const _NoticeDivider(),
               const _NoticeSectionLabel('AUDIENCE'),
               const SizedBox(height: 10),
-              Row(
+              // Only the audiences this notice type allows -- mirrors
+              // targetOptions = NOTICE_TYPE_META[type].visibilities in
+              // CreateNoticeForm (e.g. emergency offers everyone/admins,
+              // never specific/selected).
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _NoticeAudienceChip(
-                    label: 'Specific member',
-                    selected: visibility == NoticeVisibility.specific,
-                    onTap: () => setSheetState(() {
-                      visibility = NoticeVisibility.specific;
-                      if (targetMemberIds.length > 1) {
-                        final first = targetMemberIds.first;
-                        targetMemberIds
-                          ..clear()
-                          ..add(first);
-                      }
-                    }),
-                  ),
-                  const SizedBox(width: 8),
-                  _NoticeAudienceChip(
-                    label: 'Selected members',
-                    selected: visibility == NoticeVisibility.selected,
-                    onTap: () => setSheetState(() => visibility = NoticeVisibility.selected),
-                  ),
+                  for (final v in kNoticeTypeMeta[type]!.visibilities)
+                    _NoticeAudienceChip(
+                      label: kVisibilityLabel[v]!,
+                      selected: visibility == v,
+                      onTap: () => setSheetState(() {
+                        visibility = v;
+                        if (v == NoticeVisibility.specific &&
+                            targetMemberIds.length > 1) {
+                          final first = targetMemberIds.first;
+                          targetMemberIds
+                            ..clear()
+                            ..add(first);
+                        }
+                      }),
+                    ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: _NoticeFormColors.border, width: 0.8),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < members.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 10),
-                      _NoticeMemberRow(
-                        name: members[i].name,
-                        checked: targetMemberIds.contains(members[i].id),
-                        onTap: () => toggleMember(members[i].id),
-                      ),
+              if (visibility == NoticeVisibility.specific ||
+                  visibility == NoticeVisibility.selected) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: surface.card,
+                    border: Border.all(color: surface.border, width: 0.8),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < members.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 10),
+                        _NoticeMemberRow(
+                          name: members[i].name,
+                          checked: targetMemberIds.contains(members[i].id),
+                          onTap: () => toggleMember(members[i].id),
+                        ),
+                      ],
+                      if (members.isEmpty)
+                        Text('No active members yet.', style: TextStyle(fontSize: 13, color: surface.mutedForeground)),
                     ],
-                    if (members.isEmpty)
-                      Text('No active members yet.', style: TextStyle(fontSize: 13, color: context.surface.mutedForeground)),
-                  ],
+                  ),
                 ),
-              ),
+              ],
               const _NoticeDivider(),
               const _NoticeSectionLabel('SCHEDULE'),
               const SizedBox(height: 12),
-              Text('Publish', style: TextStyle(fontSize: 11, color: _NoticeFormColors.sectionLabel)),
+              Text('Publish', style: TextStyle(fontSize: 11, color: surface.mutedForeground)),
               const SizedBox(height: 6),
               _NoticeSegmentedToggle(
                 leftLabel: 'Now',
@@ -380,7 +416,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                 ),
               ],
               const SizedBox(height: 12),
-              Text('Expire', style: TextStyle(fontSize: 11, color: _NoticeFormColors.sectionLabel)),
+              Text('Expire', style: TextStyle(fontSize: 11, color: surface.mutedForeground)),
               const SizedBox(height: 6),
               _NoticeSegmentedToggle(
                 leftLabel: 'In 7 days',
@@ -400,12 +436,12 @@ class _NoticesScreenState extends State<NoticesScreen>
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: _NoticeFormColors.fieldBg, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: surface.background, borderRadius: BorderRadius.circular(8)),
                 child: Text(
                   publishNow
                       ? "Will publish immediately and expire ${_formatScheduleMoment(resolvedExpiresAt())} -- your device's local time."
                       : "Will publish ${_formatScheduleMoment(resolvedPublishAt())} and expire ${_formatScheduleMoment(resolvedExpiresAt())} -- your device's local time.",
-                  style: TextStyle(fontSize: 11.5, height: 1.4, color: _NoticeFormColors.sectionLabel),
+                  style: TextStyle(fontSize: 11.5, height: 1.4, color: surface.mutedForeground),
                 ),
               ),
               const _NoticeDivider(),
@@ -414,7 +450,7 @@ class _NoticesScreenState extends State<NoticesScreen>
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  border: Border.all(color: _NoticeFormColors.border, width: 0.8),
+                  border: Border.all(color: surface.border, width: 0.8),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -431,11 +467,11 @@ class _NoticesScreenState extends State<NoticesScreen>
                         child: PopupMenuButton<PinDuration>(
                           onSelected: (val) => setSheetState(() => selectedPinDuration = val),
                           offset: const Offset(0, 48),
-                          color: Colors.white,
+                          color: surface.card,
                           elevation: 4,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFFEEEEEE), width: 1),
+                            side: BorderSide(color: surface.border, width: 1),
                           ),
                           itemBuilder: (ctx) => [
                             PinDuration.untilManual,
@@ -452,7 +488,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFFFBE9E2) : Colors.transparent,
+                                  color: isSelected ? surface.accent : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -463,7 +499,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                                        color: isSelected ? CottageColors.primary : const Color(0xFF2A2A2A),
+                                        color: isSelected ? CottageColors.primary : surface.foreground,
                                       ),
                                     ),
                                     if (isSelected)
@@ -476,8 +512,8 @@ class _NoticesScreenState extends State<NoticesScreen>
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFAFAFA),
-                              border: Border.all(color: const Color(0xFFEEEEEE), width: 0.8),
+                              color: surface.background,
+                              border: Border.all(color: surface.border, width: 0.8),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -485,26 +521,32 @@ class _NoticesScreenState extends State<NoticesScreen>
                               children: [
                                 Text(
                                   pinDurationString(selectedPinDuration),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
-                                    color: Color(0xFF2A2A2A),
+                                    color: surface.foreground,
                                     fontWeight: FontWeight.w400,
                                   ),
                                 ),
-                                const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF707070)),
+                                Icon(Icons.keyboard_arrow_down, size: 16, color: surface.mutedForeground),
                               ],
                             ),
                           ),
                         ),
                       ),
                     ],
-                    Container(height: 0.8, color: _NoticeFormColors.border),
-                    _NoticeOptionRow(
-                      title: 'Post as "Cottage"',
-                      subtitle: 'Hides your name - members see it as a house announcement.',
-                      value: postAsCottage,
-                      onChanged: (v) => setSheetState(() => postAsCottage = v),
-                    ),
+                    // Anonymous posting is super-admin-only, same as
+                    // CreateNoticeForm's `profile.role === "super_admin"`
+                    // guard around this checkbox (and the server-side check
+                    // in createNotice).
+                    if (profile.isSuperAdmin) ...[
+                      Container(height: 0.8, color: surface.border),
+                      _NoticeOptionRow(
+                        title: 'Post as "Cottage"',
+                        subtitle: 'Hides your name - members see it as a house announcement.',
+                        value: postAsCottage,
+                        onChanged: (v) => setSheetState(() => postAsCottage = v),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -516,7 +558,9 @@ class _NoticesScreenState extends State<NoticesScreen>
                     showToast(sheetContext, 'Give the notice a title.');
                     return;
                   }
-                  if (targetMemberIds.isEmpty) {
+                  if ((visibility == NoticeVisibility.specific ||
+                          visibility == NoticeVisibility.selected) &&
+                      targetMemberIds.isEmpty) {
                     showToast(sheetContext, 'Pick at least one member.');
                     return;
                   }
@@ -557,25 +601,25 @@ class _NoticesScreenState extends State<NoticesScreen>
       child: Container(
         padding: const EdgeInsets.all(3.217),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          color: surface.card,
+          border: Border.all(color: surface.border),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: _buildTabItem(0, 'Notice Feed')),
+            Expanded(child: _buildTabItem(surface, 0, 'Notice Feed')),
             const SizedBox(width: 3.217),
-            Expanded(child: _buildTabItem(1, 'Scheduled Notices')),
+            Expanded(child: _buildTabItem(surface, 1, 'Scheduled Notices')),
             const SizedBox(width: 3.217),
-            Expanded(child: _buildTabItem(2, 'Notice History')),
+            Expanded(child: _buildTabItem(surface, 2, 'Notice History')),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTabItem(int index, String label) {
+  Widget _buildTabItem(CottageSurface surface, int index, String label) {
     final active = _activeTabIndex == index;
     return GestureDetector(
       onTap: () => setState(() {
@@ -586,7 +630,7 @@ class _NoticesScreenState extends State<NoticesScreen>
         padding: const EdgeInsets.symmetric(horizontal: 9.651, vertical: 6.434),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: active ? CottageColors.primary : const Color(0xFFFAFAFA),
+          color: active ? CottageColors.primary : surface.background,
           borderRadius: BorderRadius.circular(8.043),
         ),
         child: Text(
@@ -595,7 +639,7 @@ class _NoticesScreenState extends State<NoticesScreen>
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w400,
-            color: active ? Colors.white : const Color(0xFF404040),
+            color: active ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -695,7 +739,7 @@ class _NoticesScreenState extends State<NoticesScreen>
                 context.responsivePadding,
                 20,
                 context.responsivePadding,
-                24 + MediaQuery.paddingOf(context).bottom,
+                context.bottomNavClearance,
               ),
               children: children,
             ),
@@ -904,12 +948,12 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
                         right: context.responsivePadding,
                         top: 16,
                       ),
-                      child: const Text(
+                      child: Text(
                         "The house's communication hub - independent of Meal, Utilities and Cottage Balance.",
                         style: TextStyle(
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
-                          color: Color(0xFF303030),
+                          color: surface.foreground,
                         ),
                         maxLines: 2,
                       ),
@@ -970,8 +1014,8 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
                   height: 40,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                    color: surface.card,
+                    border: Border.all(color: surface.border),
                     borderRadius: BorderRadius.circular(1000),
                     boxShadow: [
                       BoxShadow(
@@ -984,14 +1028,14 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.add, size: 20, color: Color(0xFF404040)),
+                      Icon(Icons.add, size: 20, color: surface.foreground),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Create Notice',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF404040),
+                          color: surface.foreground,
                         ),
                       ),
                     ],
@@ -1014,15 +1058,9 @@ class _DynamicNoticeHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 // --- Create Notice drawer widgets (Figma node 97:1705) --- //
 
-class _NoticeFormColors {
-  _NoticeFormColors._();
-  static const sectionLabel = Color(0xFF707070);
-  static const fieldBg = Color(0xFFFAFAFA);
-  static const border = Color(0xFFEEEEEE);
-  static const inputText = Color(0xFF2A2A2A);
-  static const placeholder = Color(0xFFA3A3A3);
-  static const saveButton = Color(0xFFD1593B);
-}
+// The "Create Notice" saved button uses a fixed orange regardless of
+// theme -- same as CottageColors.primary buttons elsewhere.
+const _noticeSaveButtonColor = Color(0xFFD1593B);
 
 const Map<NoticeType, Color> _noticeTypeIconBg = {
   NoticeType.general: Color(0xFFD3E9FA),
@@ -1055,6 +1093,7 @@ class _NoticeFormDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     // The sheet's outer height is already capped (showCottageSheet: 85% of
     // screen height) -- this form is long enough to exceed that on most
     // phones, so the body scrolls internally rather than overflowing while
@@ -1067,12 +1106,12 @@ class _NoticeFormDrawer extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Row(
             children: [
-              const Icon(Icons.sticky_note_2_outlined, size: 24, color: Color(0xFF17191E)),
+              Icon(Icons.sticky_note_2_outlined, size: 24, color: surface.foreground),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Create Notice',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF17191E)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: surface.foreground),
                 ),
               ),
               GestureDetector(
@@ -1081,8 +1120,8 @@ class _NoticeFormDrawer extends StatelessWidget {
                   width: 28,
                   height: 28,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: _NoticeFormColors.fieldBg, borderRadius: BorderRadius.circular(14)),
-                  child: const Icon(Icons.close, size: 16, color: Color(0xFF17191E)),
+                  decoration: BoxDecoration(color: surface.background, borderRadius: BorderRadius.circular(14)),
+                  child: Icon(Icons.close, size: 16, color: surface.foreground),
                 ),
               ),
             ],
@@ -1110,7 +1149,7 @@ class _NoticeSectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _NoticeFormColors.sectionLabel, letterSpacing: 0.55),
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.surface.mutedForeground, letterSpacing: 0.55),
     );
   }
 }
@@ -1121,7 +1160,7 @@ class _NoticeFieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _NoticeFormColors.inputText));
+    return Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: context.surface.foreground));
   }
 }
 
@@ -1132,7 +1171,7 @@ class _NoticeDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Container(height: 0.8, color: _NoticeFormColors.border),
+      child: Container(height: 0.8, color: context.surface.border),
     );
   }
 }
@@ -1154,12 +1193,13 @@ class _NoticeTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _NoticeFormColors.fieldBg,
-        border: Border.all(color: _NoticeFormColors.border, width: 0.8),
+        color: surface.background,
+        border: Border.all(color: surface.border, width: 0.8),
         borderRadius: BorderRadius.circular(8),
       ),
       child: TextField(
@@ -1168,10 +1208,10 @@ class _NoticeTextField extends StatelessWidget {
         maxLines: maxLines,
         keyboardType: keyboardType,
         textCapitalization: TextCapitalization.sentences,
-        style: const TextStyle(fontSize: 13, color: _NoticeFormColors.inputText),
+        style: TextStyle(fontSize: 13, color: surface.foreground),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 13, color: _NoticeFormColors.placeholder),
+          hintStyle: TextStyle(fontSize: 13, color: surface.mutedForeground),
           filled: false,
           border: InputBorder.none,
           isDense: true,
@@ -1191,19 +1231,20 @@ class _NoticeTapField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: _NoticeFormColors.fieldBg,
-          border: Border.all(color: _NoticeFormColors.border, width: 0.8),
+          color: surface.background,
+          border: Border.all(color: surface.border, width: 0.8),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           value,
-          style: TextStyle(fontSize: 13, color: isPlaceholder ? _NoticeFormColors.placeholder : _NoticeFormColors.inputText),
+          style: TextStyle(fontSize: 13, color: isPlaceholder ? surface.mutedForeground : surface.foreground),
         ),
       ),
     );
@@ -1219,14 +1260,15 @@ class _NoticeTypeOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final meta = kNoticeTypeMeta[type]!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFBE9E2) : Colors.white,
-          border: Border.all(color: selected ? CottageColors.primary : _NoticeFormColors.border, width: selected ? 1.5 : 0.8),
+          color: selected ? surface.accent : surface.card,
+          border: Border.all(color: selected ? CottageColors.primary : surface.border, width: selected ? 1.5 : 0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -1237,7 +1279,7 @@ class _NoticeTypeOption extends StatelessWidget {
               height: 32,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: _noticeTypeIconBg[type], shape: BoxShape.circle),
-              child: Icon(meta.icon, size: 16, color: selected ? CottageColors.primary : _NoticeFormColors.sectionLabel),
+              child: Icon(meta.icon, size: 16, color: selected ? CottageColors.primary : surface.mutedForeground),
             ),
             const SizedBox(height: 6),
             Text(
@@ -1247,7 +1289,7 @@ class _NoticeTypeOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: selected ? CottageColors.primary : _NoticeFormColors.sectionLabel,
+                color: selected ? CottageColors.primary : surface.mutedForeground,
               ),
             ),
           ],
@@ -1295,18 +1337,19 @@ class _NoticeAudienceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFBE9E2) : Colors.white,
-          border: Border.all(color: selected ? CottageColors.primary : _NoticeFormColors.border, width: selected ? 1.5 : 0.8),
+          color: selected ? surface.accent : surface.card,
+          border: Border.all(color: selected ? CottageColors.primary : surface.border, width: selected ? 1.5 : 0.8),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: selected ? CottageColors.primary : _NoticeFormColors.sectionLabel),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: selected ? CottageColors.primary : surface.mutedForeground),
         ),
       ),
     );
@@ -1322,6 +1365,7 @@ class _NoticeMemberRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -1332,14 +1376,14 @@ class _NoticeMemberRow extends StatelessWidget {
             height: 18,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: checked ? CottageColors.primary : Colors.white,
-              border: Border.all(color: checked ? CottageColors.primary : _NoticeFormColors.border, width: 1.2),
+              color: checked ? CottageColors.primary : surface.card,
+              border: Border.all(color: checked ? CottageColors.primary : surface.border, width: 1.2),
               borderRadius: BorderRadius.circular(5),
             ),
             child: checked ? const Icon(Icons.check, size: 12, color: Colors.white) : null,
           ),
           const SizedBox(width: 10),
-          Text(name, style: const TextStyle(fontSize: 13, color: _NoticeFormColors.inputText)),
+          Text(name, style: TextStyle(fontSize: 13, color: surface.foreground)),
         ],
       ),
     );
@@ -1362,13 +1406,13 @@ class _NoticeSegmentedToggle extends StatelessWidget {
     required this.onChanged,
   });
 
-  Widget _segment(String label, bool selected, VoidCallback onTap) {
+  Widget _segment(CottageSurface surface, String label, bool selected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? _NoticeFormColors.fieldBg : Colors.white,
+          color: selected ? surface.background : surface.card,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -1376,7 +1420,7 @@ class _NoticeSegmentedToggle extends StatelessWidget {
           style: TextStyle(
             fontSize: 11.5,
             fontWeight: FontWeight.w500,
-            color: selected ? _NoticeFormColors.inputText : _NoticeFormColors.sectionLabel,
+            color: selected ? surface.foreground : surface.mutedForeground,
           ),
         ),
       ),
@@ -1385,18 +1429,19 @@ class _NoticeSegmentedToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        border: Border.all(color: _NoticeFormColors.border, width: 0.8),
+        border: Border.all(color: surface.border, width: 0.8),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _segment(leftLabel, selectedLeft, () => onChanged(true)),
+          _segment(surface, leftLabel, selectedLeft, () => onChanged(true)),
           const SizedBox(width: 2),
-          _segment(rightLabel, !selectedLeft, () => onChanged(false)),
+          _segment(surface, rightLabel, !selectedLeft, () => onChanged(false)),
         ],
       ),
     );
@@ -1413,6 +1458,7 @@ class _NoticeOptionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
@@ -1422,9 +1468,9 @@ class _NoticeOptionRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _NoticeFormColors.inputText)),
+                Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: surface.foreground)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: _NoticeFormColors.sectionLabel)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: surface.mutedForeground)),
               ],
             ),
           ),
@@ -1434,7 +1480,7 @@ class _NoticeOptionRow extends StatelessWidget {
             onChanged: onChanged,
             activeThumbColor: Colors.white,
             activeTrackColor: CottageColors.primary,
-            inactiveTrackColor: _NoticeFormColors.border,
+            inactiveTrackColor: surface.border,
             inactiveThumbColor: Colors.white,
           ),
         ],
@@ -1456,7 +1502,7 @@ class _NoticeSaveButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 13),
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: _NoticeFormColors.saveButton, borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(color: _noticeSaveButtonColor, borderRadius: BorderRadius.circular(999)),
         child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
       ),
     );

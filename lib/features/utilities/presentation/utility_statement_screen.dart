@@ -6,16 +6,12 @@ import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/cottage_loader.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
+import 'package:cottage/helpers/utility_categories.dart';
 import '../../dashboard/data/dashboard_service.dart';
 import '../../menu/data/member_service.dart';
 import '../data/utility_statement_models.dart';
 import '../data/utility_statement_service.dart';
 
-const _fieldBg = Color(0xFFFAFAFA);
-const _border = Color(0xFFEEEEEE);
-const _darkText = Color(0xFF404040);
-const _placeholder = Color(0xFFAAAAAA);
-const _headingText = Color(0xFF17191E);
 const _requiredMark = Color(0xFFCC4F4F);
 const _saveButton = Color(0xFFD1593B);
 
@@ -120,245 +116,143 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
     Share.share(buffer.toString(), subject: 'Utility Statement - $monthLabel');
   }
 
+  // Page shell mirrors MealScreen's "Monthly Details" interaction (see
+  // _DynamicMealHeaderDelegate there and _DynamicMembersHeaderDelegate in
+  // members_screen.dart): a NestedScrollView whose orange header shrinks
+  // into a compact pinned bar as the statement list scrolls, instead of a
+  // static fixed-height header band sitting above an independently
+  // scrolling body.
   @override
   Widget build(BuildContext context) {
     final surface = context.surface;
-    return Scaffold(
-      backgroundColor: CottageColors.primary,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.responsivePadding,
-                8,
-                context.responsivePadding,
-                16,
-              ),
-              child: FutureBuilder<_StatementData>(
-                future: _future,
-                builder: (context, snapshot) {
-                  final monthLabel = snapshot.hasData
-                      ? _monthLabel(snapshot.data!.monthKey)
-                      : '';
-                  // No back arrow -- matches Figma (and this app's other
-                  // pushed pages, e.g. ContactsScreen), which rely on the
-                  // system back gesture/button instead of an in-header one.
-                  return Row(
-                    children: [
-                      const Text(
-                        'Utility Statement',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      if (monthLabel.isNotEmpty) ...[
-                        const SizedBox(width: 11),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(36),
-                          ),
-                          child: Text(
-                            monthLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: CottageColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ),
-            Expanded(
+    return FutureBuilder<_StatementData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData &&
+            snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(child: CottageLoader()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: CottageColors.primary,
+            body: Center(
               child: Container(
-                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                margin: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: surface.card,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: FutureBuilder<_StatementData>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const Center(child: CottageLoader());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 40,
-                              color: CottageColors.destructive,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Could not load the statement.\n${snapshot.error}',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _refresh,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final data = snapshot.data!;
-                    return RefreshIndicator(
-                      onRefresh: () async => _refresh(),
-                      child: ListView(
-                        padding: EdgeInsets.fromLTRB(
-                          context.responsivePadding,
-                          24,
-                          context.responsivePadding,
-                          24,
-                        ),
-                        children: [
-                          Text(
-                            'Final utility bill for ${_monthLabel(data.monthKey)} — rent, expenses, carry-in dues and manual adjustments, all distributed to members.',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF303030),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => _download(data),
-                                child: Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: _border),
-                                    borderRadius: BorderRadius.circular(1000),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.06,
-                                        ),
-                                        blurRadius: 1,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.download_outlined,
-                                        size: 18,
-                                        color: _darkText,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Download',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: _darkText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              if (data.viewer.isSuperAdmin)
-                                GestureDetector(
-                                  onTap: () => _showAddAdjustment(data),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDE7356),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '+',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        SizedBox(width: 6),
-                                        Text(
-                                          'Add Adjustment',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Member Statements',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: _headingText,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          for (final s in data.statements)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _MemberStatementCard(statement: s),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 40,
+                      color: CottageColors.destructive,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Could not load the statement.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: surface.foreground),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          );
+        }
+
+        final data = snapshot.data!;
+
+        final pageContent = Scaffold(
+          backgroundColor: CottageColors.primary,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicUtilityStatementHeaderDelegate(
+                    surface: surface,
+                    safeAreaTop: MediaQuery.of(context).padding.top,
+                    monthLabel: _monthLabel(data.monthKey),
+                    showAddAdjustment: data.viewer.isSuperAdmin,
+                    onDownload: () => _download(data),
+                    onAddAdjustment: () => _showAddAdjustment(data),
+                  ),
+                ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: RefreshIndicator(
+                onRefresh: () async => _refresh(),
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.responsivePadding,
+                    20,
+                    context.responsivePadding,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  children: [
+                    Text(
+                      'Member Statements',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: surface.foreground,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    for (final s in data.statements)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _MemberStatementCard(statement: s),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Stack(
+            children: [
+              pageContent,
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  child: const Center(child: CottageLoader()),
+                ),
+              ),
+            ],
+          );
+        }
+        return pageContent;
+      },
     );
   }
 
-  static const _categories = ['electricity', 'internet', 'gas', 'other'];
-  static const _categoryLabels = {
-    'electricity': 'Electricity',
-    'internet': 'Internet',
-    'gas': 'Gas',
-    'other': 'Other',
-  };
+  // Same full category set as the web app's Add Adjustment form (every
+  // UTILITY_CATEGORY_LABELS entry, 'other' last) -- this used to hardcode
+  // just 4 of the 8, silently dropping House Rent/Servant/Trash/Filter Kit
+  // as choices here.
+  static final _categories = [
+    ...utilityCategoryLabels.keys.where((k) => k != 'other'),
+    'other',
+  ];
+  static const _categoryLabels = utilityCategoryLabels;
 
   /// Figma "Add Adjustment - Drawer" (node 119:1365) plus its "Other
   /// Category" / "All Members" (equal + custom split) variant states, all
@@ -383,6 +277,7 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
+          final surface = sheetContext.surface;
           final total = double.tryParse(amountCtrl.text) ?? 0;
           final memberCount = data.statements.length;
           final customSplitSum = customSplitCtrls.values.fold<double>(
@@ -464,8 +359,11 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: customCategoryCtrl,
-                  style: const TextStyle(fontSize: 13, color: _darkText),
-                  decoration: _fieldDecoration('e.g. Discount, Wi-Fi Router'),
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
+                  decoration: _fieldDecoration(
+                    surface,
+                    'e.g. Discount, Wi-Fi Router',
+                  ),
                   textCapitalization: TextCapitalization.words,
                 ),
               ],
@@ -474,17 +372,17 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
               const SizedBox(height: 6),
               TextField(
                 controller: amountCtrl,
-                style: const TextStyle(fontSize: 13, color: _darkText),
-                decoration: _fieldDecoration('0.00', prefix: '৳'),
+                style: TextStyle(fontSize: 13, color: surface.foreground),
+                decoration: _fieldDecoration(surface, '0.00', prefix: '৳'),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 onChanged: (_) => setSheetState(() {}),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Adjustment Type',
-                style: TextStyle(fontSize: 13, color: _darkText),
+                style: TextStyle(fontSize: 13, color: surface.foreground),
               ),
               const SizedBox(height: 6),
               Row(
@@ -508,9 +406,9 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Apply To',
-                style: TextStyle(fontSize: 13, color: _darkText),
+                style: TextStyle(fontSize: 13, color: surface.foreground),
               ),
               const SizedBox(height: 6),
               Row(
@@ -548,9 +446,9 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                 ),
               ] else ...[
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Split Mode',
-                  style: TextStyle(fontSize: 13, color: _darkText),
+                  style: TextStyle(fontSize: 13, color: surface.foreground),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -579,9 +477,9 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                         ? 'No active members to split across.'
                         : '${total.toStringAsFixed(2)} tk will be split evenly across all $memberCount members '
                               '(${(total / memberCount).toStringAsFixed(2)} tk each).',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF7A818D),
+                      color: surface.mutedForeground,
                     ),
                   ),
                 ] else ...[
@@ -594,9 +492,9 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                           Expanded(
                             child: Text(
                               s.profile.displayName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: _darkText,
+                                color: surface.foreground,
                               ),
                             ),
                           ),
@@ -604,11 +502,11 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                             width: 80,
                             child: TextField(
                               controller: customSplitCtrls[s.profile.id],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: _darkText,
+                                color: surface.foreground,
                               ),
-                              decoration: _fieldDecoration('0.00'),
+                              decoration: _fieldDecoration(surface, '0.00'),
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
@@ -625,16 +523,16 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: customSplitSum == total
-                          ? const Color(0xFF16A34A)
+                          ? surface.toneGreenFg
                           : _requiredMark,
                     ),
                   ),
                 ],
               ],
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Paid By (optional)',
-                style: TextStyle(fontSize: 13, color: _darkText),
+                style: TextStyle(fontSize: 13, color: surface.foreground),
               ),
               const SizedBox(height: 6),
               _TapField(
@@ -736,22 +634,351 @@ class _UtilityStatementScreenState extends State<UtilityStatementScreen> {
   }
 }
 
-InputDecoration _fieldDecoration(String hint, {String? prefix}) {
-  const border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(10)),
-    borderSide: BorderSide(color: _border),
+/// Collapsing header for the Utility Statement page -- a line-for-line port
+/// of _DynamicMealHeaderDelegate's ("Monthly Details") shrink-on-scroll
+/// behavior in meal_screen.dart, swapping its tabBar slot for the
+/// Download/Add Adjustment button row: same extents-minus-tabBar-height,
+/// same orange-retreats-1.5x-faster background formula, same expanded
+/// title+badge+description vs. collapsed title+badge (badge colors invert
+/// between the two, matching Monthly Details exactly), same bottom-pinned
+/// action row.
+class _DynamicUtilityStatementHeaderDelegate
+    extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final double safeAreaTop;
+  final String monthLabel;
+  final bool showAddAdjustment;
+  final VoidCallback onDownload;
+  final VoidCallback onAddAdjustment;
+
+  _DynamicUtilityStatementHeaderDelegate({
+    required this.surface,
+    required this.safeAreaTop,
+    required this.monthLabel,
+    required this.showAddAdjustment,
+    required this.onDownload,
+    required this.onAddAdjustment,
+  });
+
+  // Monthly Details' own extents (150/234) size for its header row +
+  // description + download button + tab bar. This page has no tab bar, so
+  // both extents drop by the tab bar's ~56 + the 16 gap above it, plus 6dp
+  // extra so the description block and the button row below it (which are
+  // positioned independently, not in the same flow) don't end up touching
+  // when the header is fully expanded -- keeping the same 84dp
+  // expanded-to-collapsed travel (and thus the same shrink feel) as
+  // Monthly Details.
+  @override
+  double get minExtent => safeAreaTop + 90.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 174.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background: Orange top, White bottom -- the orange band retreats
+        // 1.5x faster than plain scroll progress so it's fully gone well
+        // before the header reaches minExtent, same as Monthly Details.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        // Expanded Content (Fades out) -- clipped in an OverflowBox because
+        // the box this sits in keeps shrinking continuously as the header
+        // collapses (not just snapping between min/max), so partway
+        // through the scroll it's already smaller than this Column's fixed
+        // content height. Opacity alone doesn't stop that from overflowing
+        // (it only hides pixels, it doesn't shrink layout), so without this
+        // the mid-scroll frames show a RenderFlex overflow banner.
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Orange Header Content -- no back arrow, matches Figma
+                    // (and this app's other pushed pages, e.g.
+                    // ContactsScreen), which rely on the system back
+                    // gesture/button instead of an in-header one.
+                    Container(
+                      height: safeAreaTop + 56,
+                      padding: EdgeInsets.only(
+                        top: safeAreaTop,
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                      ),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Utility Statement',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (monthLabel.isNotEmpty) ...[
+                            const SizedBox(width: 11), // Figma: gap-11
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              child: Text(
+                                monthLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: CottageColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // White Card Content (Details)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: context.responsivePadding,
+                        right: context.responsivePadding,
+                        top: 16,
+                      ),
+                      child: Text(
+                        'Final utility bill for $monthLabel — rent, expenses, carry-in dues and manual adjustments, all distributed to members.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14,
+                          color: surface.foreground,
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                    // Guarantees the description doesn't touch the
+                    // separately-positioned button row below it (that row
+                    // is pinned to the header's own bottom edge, not this
+                    // Column's flow, so it needs its own explicit gap here
+                    // rather than relying on leftover space).
+                    const SizedBox(height: 12),
+                  ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Collapsed Content (Fades in)
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Utility Statement',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: surface.foreground,
+                            ),
+                          ),
+                          if (monthLabel.isNotEmpty) ...[
+                            const SizedBox(width: 11), // Figma: gap-11
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: CottageColors.primary,
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              child: Text(
+                                monthLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Common bottom elements (Download & Add Adjustment)
+        Positioned(
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          bottom: 8,
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: onDownload,
+                icon: Icon(
+                  Icons.download_rounded,
+                  color: surface.foreground,
+                  size: 18,
+                ),
+                label: Text(
+                  'Download',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: surface.foreground,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: surface.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(1000),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                ),
+              ),
+              const Spacer(),
+              if (showAddAdjustment)
+                GestureDetector(
+                  onTap: onAddAdjustment,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDE7356),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '+',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Add Adjustment',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicUtilityStatementHeaderDelegate oldDelegate) {
+    return true;
+  }
+}
+
+InputDecoration _fieldDecoration(
+  CottageSurface surface,
+  String hint, {
+  String? prefix,
+}) {
+  final border = OutlineInputBorder(
+    borderRadius: const BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: surface.border),
   );
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(fontSize: 13, color: _placeholder),
+    hintStyle: TextStyle(fontSize: 13, color: surface.mutedForeground),
     prefixText: prefix,
-    prefixStyle: const TextStyle(
+    prefixStyle: TextStyle(
       fontSize: 14,
       fontWeight: FontWeight.w600,
-      color: _placeholder,
+      color: surface.mutedForeground,
     ),
     filled: true,
-    fillColor: _fieldBg,
+    fillColor: surface.background,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     border: border,
     enabledBorder: border,
@@ -766,16 +993,17 @@ class _MemberStatementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final due = statement.due;
     final dueLabel = due < 0 ? 'Advance Balance' : 'Remaining Due';
-    final dueColor = due < 0 ? const Color(0xFF16A34A) : _requiredMark;
+    final dueColor = due < 0 ? surface.toneGreenFg : _requiredMark;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _border),
+        color: surface.card,
+        border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -785,10 +1013,10 @@ class _MemberStatementCard extends StatelessWidget {
             children: [
               Text(
                 statement.profile.displayName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  color: _headingText,
+                  color: surface.foreground,
                 ),
               ),
               if (statement.isSettled) ...[
@@ -799,15 +1027,15 @@ class _MemberStatementCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5EC),
+                    color: surface.toneGreenBg,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Paid',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 10,
-                      color: Color(0xFF059669),
+                      color: surface.toneGreenFg,
                     ),
                   ),
                 ),
@@ -823,7 +1051,7 @@ class _MemberStatementCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _fieldBg,
+                    color: surface.background,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
@@ -831,9 +1059,9 @@ class _MemberStatementCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           line.label,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF7A818D),
+                            color: surface.mutedForeground,
                           ),
                         ),
                       ),
@@ -844,7 +1072,7 @@ class _MemberStatementCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: line.amount >= 0
                               ? _requiredMark
-                              : const Color(0xFF059669),
+                              : surface.toneGreenFg,
                         ),
                       ),
                     ],
@@ -853,26 +1081,26 @@ class _MemberStatementCard extends StatelessWidget {
               ),
           ],
           const SizedBox(height: 8),
-          const Divider(height: 1, color: _border),
+          Divider(height: 1, color: surface.border),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Assigned Cost',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
-                    color: _headingText,
+                    color: surface.foreground,
                   ),
                 ),
               ),
               Text(
                 '${statement.assignedCost.toStringAsFixed(2)} tk',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
-                  color: _headingText,
+                  color: surface.foreground,
                 ),
               ),
             ],
@@ -880,15 +1108,15 @@ class _MemberStatementCard extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Paid',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF7A818D)),
+                  style: TextStyle(fontSize: 12, color: surface.mutedForeground),
                 ),
               ),
               Text(
                 '${statement.paid.toStringAsFixed(2)} tk',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF7A818D)),
+                style: TextStyle(fontSize: 12, color: surface.mutedForeground),
               ),
             ],
           ),
@@ -927,7 +1155,12 @@ class _AdjustmentDrawerShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final surface = context.surface;
+    // Scrollable, like CottageSheetContent, so a full form (all fields plus
+    // the keyboard covering half the screen) scrolls instead of overflowing
+    // -- showCottageSheet only caps the sheet's max height, it doesn't make
+    // its content scrollable on its own.
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -935,19 +1168,15 @@ class _AdjustmentDrawerShell extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.payments_outlined,
-                size: 20,
-                color: _headingText,
-              ),
+              Icon(Icons.payments_outlined, size: 20, color: surface.foreground),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Add Adjustment',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: _headingText,
+                    color: surface.foreground,
                   ),
                 ),
               ),
@@ -958,10 +1187,10 @@ class _AdjustmentDrawerShell extends StatelessWidget {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _fieldBg,
+                    color: surface.background,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: _darkText),
+                  child: Icon(Icons.close, size: 16, color: surface.foreground),
                 ),
               ),
             ],
@@ -983,7 +1212,10 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text('$text ', style: const TextStyle(fontSize: 13, color: _darkText)),
+        Text(
+          '$text ',
+          style: TextStyle(fontSize: 13, color: context.surface.foreground),
+        ),
         if (required)
           const Text('*', style: TextStyle(fontSize: 13, color: _requiredMark)),
       ],
@@ -1003,14 +1235,15 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFDE7356) : _fieldBg,
+          color: selected ? const Color(0xFFDE7356) : surface.background,
           border: Border.all(
-            color: selected ? const Color(0xFFDE7356) : _border,
+            color: selected ? const Color(0xFFDE7356) : surface.border,
           ),
           borderRadius: BorderRadius.circular(999),
         ),
@@ -1018,7 +1251,7 @@ class _Chip extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? Colors.white : _darkText,
+            color: selected ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -1040,14 +1273,15 @@ class _ToggleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? selectedColor : _fieldBg,
-          border: Border.all(color: selected ? selectedColor : _border),
+          color: selected ? selectedColor : surface.background,
+          border: Border.all(color: selected ? selectedColor : surface.border),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -1055,7 +1289,7 @@ class _ToggleOption extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : _darkText,
+            color: selected ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -1075,21 +1309,22 @@ class _TapField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: _fieldBg,
-          border: Border.all(color: _border),
+          color: surface.background,
+          border: Border.all(color: surface.border),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           value,
           style: TextStyle(
             fontSize: 13,
-            color: isPlaceholder ? _placeholder : _darkText,
+            color: isPlaceholder ? surface.mutedForeground : surface.foreground,
           ),
         ),
       ),

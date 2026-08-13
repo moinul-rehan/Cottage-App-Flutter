@@ -282,9 +282,9 @@ class _MembersScreenState extends State<MembersScreen>
           return CottageSheetContent(
             title: '${member.firstName}\'s Permissions',
             children: [
-              const Text(
+              Text(
                 'Select which actions this member is allowed to perform.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF7A818D)),
+                style: TextStyle(fontSize: 13, color: sheetContext.surface.mutedForeground),
               ),
               const SizedBox(height: 8),
               buildToggle(
@@ -482,11 +482,11 @@ class _MembersScreenState extends State<MembersScreen>
                 controller: roomCtrl,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Role',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Color(0xFF404040),
+                  color: sheetContext.surface.foreground,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -892,12 +892,12 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
                         right: context.responsivePadding,
                         top: 16,
                       ),
-                      child: const Text(
+                      child: Text(
                         "Everyone sharing this Cottage and their role.",
                         style: TextStyle(
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
-                          color: Color(0xFF303030),
+                          color: surface.mutedForeground,
                         ),
                         maxLines: 2,
                       ),
@@ -1029,6 +1029,7 @@ class _MemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final initial = member.firstName.isNotEmpty
         ? member.firstName[0].toUpperCase()
         : '?';
@@ -1036,8 +1037,8 @@ class _MemberCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        color: surface.card,
+        border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -1050,7 +1051,7 @@ class _MemberCard extends StatelessWidget {
                 height: 44,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFBEAE5),
+                  color: surface.toneOrangeBg,
                   borderRadius: BorderRadius.circular(22),
                   image:
                       (member.avatarUrl != null && member.avatarUrl!.isNotEmpty)
@@ -1084,10 +1085,10 @@ class _MemberCard extends StatelessWidget {
                             isViewer
                                 ? '${member.displayName} (you)'
                                 : member.displayName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: Color(0xFF17191E),
+                              color: surface.foreground,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1096,7 +1097,7 @@ class _MemberCard extends StatelessWidget {
                         VerifiedBadge(
                           isSuperAdmin: member.isSuperAdmin,
                           hasElevatedAccess: member.hasElevatedAccess,
-                          defaultColor: const Color(0xFF17191E),
+                          defaultColor: surface.foreground,
                           size: 14,
                         ),
                       ],
@@ -1106,9 +1107,9 @@ class _MemberCard extends StatelessWidget {
                       member.isSuperAdmin
                           ? 'Super admin'
                           : (member.hasElevatedAccess ? 'Manager' : 'Member'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF7A818D),
+                        color: surface.mutedForeground,
                       ),
                     ),
                   ],
@@ -1118,8 +1119,8 @@ class _MemberCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: member.isActive
-                      ? const Color(0xFFE8F5EC)
-                      : const Color(0xFFF4F4F6),
+                      ? surface.toneGreenBg
+                      : surface.muted,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1128,8 +1129,8 @@ class _MemberCard extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: member.isActive
-                        ? const Color(0xFF059669)
-                        : const Color(0xFF7A818D),
+                        ? surface.toneGreenFg
+                        : surface.mutedForeground,
                   ),
                 ),
               ),
@@ -1168,7 +1169,7 @@ class _MemberCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFBEAE5),
+                color: surface.toneOrangeBg,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -1255,7 +1256,7 @@ class _ToggleActiveLabel extends StatelessWidget {
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 12,
-          color: isActive ? const Color(0xFF7A818D) : CottageColors.primary,
+          color: isActive ? context.surface.mutedForeground : CottageColors.primary,
         ),
       ),
     );
@@ -1269,14 +1270,15 @@ class _ContactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Row(
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF7A818D)),
+        Icon(icon, size: 16, color: surface.mutedForeground),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF7A818D)),
+            style: TextStyle(fontSize: 12, color: surface.mutedForeground),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -1304,6 +1306,7 @@ class _InviteTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1311,9 +1314,9 @@ class _InviteTextField extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF404040),
+                color: surface.foreground,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -1335,27 +1338,27 @@ class _InviteTextField extends StatelessWidget {
           controller: controller,
           textCapitalization: textCapitalization,
           keyboardType: keyboardType,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+          style: TextStyle(fontSize: 13, color: surface.foreground),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+            hintStyle: TextStyle(fontSize: 13, color: surface.mutedForeground),
             filled: true,
-            fillColor: const Color(0xFFFAFAFA),
+            fillColor: surface.background,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+              borderSide: BorderSide(color: surface.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+              borderSide: BorderSide(color: surface.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+              borderSide: BorderSide(color: surface.border),
             ),
             isDense: true,
           ),
@@ -1377,14 +1380,15 @@ class _RoleChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFDE7356) : const Color(0xFFFAFAFA),
+          color: selected ? const Color(0xFFDE7356) : surface.background,
           border: Border.all(
-            color: selected ? const Color(0xFFDE7356) : const Color(0xFFEEEEEE),
+            color: selected ? const Color(0xFFDE7356) : surface.border,
           ),
           borderRadius: BorderRadius.circular(999),
         ),
@@ -1394,7 +1398,7 @@ class _RoleChoice extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : const Color(0xFF404040),
+            color: selected ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -1414,12 +1418,13 @@ class _ActionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          border: Border.all(color: surface.border),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -1427,15 +1432,15 @@ class _ActionPill extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
-                color: Color(0xFF17191E),
+                color: surface.foreground,
               ),
             ),
             if (trailingIcon != null) ...[
               const SizedBox(width: 4),
-              Icon(trailingIcon, size: 14, color: const Color(0xFF17191E)),
+              Icon(trailingIcon, size: 14, color: surface.foreground),
             ],
           ],
         ),

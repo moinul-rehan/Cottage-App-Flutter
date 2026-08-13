@@ -87,7 +87,23 @@ class RequestService {
     });
   }
 
-  String _monthKeyOf(String isoDate) => isoDate.substring(0, 7);
+  /// cottages.active_month_key -- mirrors getActiveMonthKey in
+  /// src/lib/data/months.ts / DashboardService.getActiveMonthKey. Approving
+  /// a request must stamp the cottage's *current* month, same as web's
+  /// approveMealRequest/approveMealCostRequest (which use
+  /// `profile.active_month_key`), not whatever calendar month the
+  /// requested date happens to fall in.
+  Future<String> _getActiveMonthKey(String cottageId) async {
+    final row = await _client
+        .from('cottages')
+        .select('active_month_key')
+        .eq('id', cottageId)
+        .single();
+    final key = row['active_month_key'] as String?;
+    if (key != null && key.isNotEmpty) return key;
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+  }
 
   /// Approving writes straight into `daily_meals` (mirrors what a manager's
   /// own "Add Meal" does), then marks the request reviewed.
@@ -96,10 +112,11 @@ class RequestService {
     required String cottageId,
     required String reviewerId,
   }) async {
+    final activeMonthKey = await _getActiveMonthKey(cottageId);
     await _client.from('daily_meals').upsert({
       'user_id': request.userId,
       'cottage_id': cottageId,
-      'month_key': _monthKeyOf(request.requestDate),
+      'month_key': activeMonthKey,
       'meal_date': request.requestDate,
       'count': request.total,
       'created_by': reviewerId,
@@ -134,12 +151,14 @@ class RequestService {
   /// amount in the same atomic call), then marks the request reviewed.
   Future<void> approveMealCostRequest(
     MealCostRequest request, {
+    required String cottageId,
     required String reviewerId,
   }) async {
+    final activeMonthKey = await _getActiveMonthKey(cottageId);
     await _client.rpc(
       'add_bazaar_entry',
       params: {
-        'p_month_key': _monthKeyOf(request.entryDate),
+        'p_month_key': activeMonthKey,
         'p_spent_by': request.userId,
         'p_amount': request.amount,
         'p_description': request.description,

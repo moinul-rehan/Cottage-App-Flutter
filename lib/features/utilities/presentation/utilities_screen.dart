@@ -10,6 +10,7 @@ import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
+import 'package:cottage/helpers/utility_categories.dart';
 
 /// Figma exact-match tokens for this screen's read-only record cards --
 /// intentionally literal hex (not [CottageSurface] tokens, which are close
@@ -132,15 +133,20 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
     return '${d.day} ${months[d.month - 1]}, ${d.year}';
   }
 
-  /// Figma node 77:1052 ("Add Expense - Drawer"): free-text Category and
-  /// Payment Source (not dropdowns -- the design just shows placeholder
-  /// examples), Date via a tap-to-pick field styled like the others.
+  /// Figma node 77:1052 ("Add Expense - Drawer"): free-text Category, Date
+  /// via a tap-to-pick field styled like the others. Payment Source is a
+  /// 3-way picker (Member / Cottage Balance / None) matching the web app's
+  /// AddExpenseForm radio group exactly -- it's not just a label, each
+  /// choice drives a real side effect (see UtilityService.addExpense), so
+  /// it can't be free text.
   void _showAddExpense(_UtilityData data) {
-    final categoryCtrl = TextEditingController();
+    final customCategoryCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    final paymentSourceCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     DateTime selectedDate = DateTime.now();
+    String category = 'electricity';
+    String paymentSource = 'cottage_balance';
+    Profile? paidByMember;
 
     showCottageSheet(
       context: context,
@@ -168,11 +174,24 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
             ),
             _DrawerField(
               label: 'Category',
-              child: _DrawerTextField(
-                controller: categoryCtrl,
-                hint: 'e.g. Electricity, Internet, Gas',
+              child: _DrawerTapField(
+                value: utilityCategoryLabels[category]!,
+                onTap: () async {
+                  final picked = await _pickCategory(ctx);
+                  if (picked != null) {
+                    setSheetState(() => category = picked);
+                  }
+                },
               ),
             ),
+            if (category == 'other')
+              _DrawerField(
+                label: 'Custom Category Name',
+                child: _DrawerTextField(
+                  controller: customCategoryCtrl,
+                  hint: 'e.g. Gas cylinder',
+                ),
+              ),
             _DrawerField(
               label: 'Description',
               child: _DrawerTextField(
@@ -180,13 +199,66 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                 hint: 'July electricity bill payment',
               ),
             ),
-            _DrawerField(
-              label: 'Payment Source',
-              child: _DrawerTextField(
-                controller: paymentSourceCtrl,
-                hint: 'Cottage Balance',
+            const Text(
+              'Payment Source',
+              style: TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _PaymentSourceOption(
+                    label: 'Member',
+                    selected: paymentSource == 'member',
+                    onTap: () => setSheetState(() => paymentSource = 'member'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _PaymentSourceOption(
+                    label: 'Cottage Balance',
+                    selected: paymentSource == 'cottage_balance',
+                    onTap: () =>
+                        setSheetState(() => paymentSource = 'cottage_balance'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _PaymentSourceOption(
+                    label: 'None',
+                    selected: paymentSource == 'none',
+                    onTap: () => setSheetState(() => paymentSource = 'none'),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              switch (paymentSource) {
+                'member' =>
+                  'That member already paid the vendor directly — reduces their Utility Due. Cottage Balance is unaffected.',
+                'cottage_balance' =>
+                  'Paid from the shared fund — Cottage Balance decreases by this amount.',
+                _ => 'Recorded only. No balance or due changes.',
+              },
+              style: const TextStyle(
+                fontSize: 11,
+                color: _UtilityColors.placeholder,
               ),
             ),
+            if (paymentSource == 'member')
+              _DrawerField(
+                label: 'Which Member Paid',
+                child: _DrawerTapField(
+                  value: paidByMember?.displayName ?? 'Select member',
+                  isPlaceholder: paidByMember == null,
+                  onTap: () async {
+                    final picked = await _pickMember(ctx, data.members);
+                    if (picked != null) {
+                      setSheetState(() => paidByMember = picked);
+                    }
+                  },
+                ),
+              ),
             _DrawerField(
               label: 'Total Amount',
               child: _DrawerAmountField(controller: amountCtrl),
@@ -195,22 +267,32 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
               label: 'Save Expense',
               onTap: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
+                final resolvedCategory = category == 'other'
+                    ? customCategoryCtrl.text.trim()
+                    : category;
                 if (amount <= 0 ||
-                    categoryCtrl.text.trim().isEmpty ||
+                    resolvedCategory.isEmpty ||
                     descCtrl.text.trim().isEmpty) {
                   showToast(ctx, 'Please fill in all required fields.');
+                  return;
+                }
+                if (paymentSource == 'member' && paidByMember == null) {
+                  showToast(ctx, 'Select which member paid.');
                   return;
                 }
                 Navigator.pop(ctx);
                 await _utilityService.addExpense(
                   cottageId: data.profile.cottageId,
+                  createdBy: data.profile.id,
+                  monthKey: data.monthKey,
                   amount: amount,
                   expenseDate: _isoDate(selectedDate),
                   description: descCtrl.text.trim(),
-                  category: categoryCtrl.text.trim(),
-                  paymentSource: paymentSourceCtrl.text.trim().isEmpty
-                      ? 'Cottage Balance'
-                      : paymentSourceCtrl.text.trim(),
+                  category: resolvedCategory,
+                  paymentSource: paymentSource,
+                  paidByMemberId: paymentSource == 'member'
+                      ? paidByMember!.id
+                      : null,
                 );
                 _refresh();
               },
@@ -227,6 +309,10 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
     final descCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     DateTime selectedDate = DateTime.now();
+    // 'addition' matches the DB's utility_deposits.source_type check
+    // constraint (migration 0016) -- the literal 'cottage' passed in by
+    // callers isn't a valid value there.
+    final depositSourceType = sourceType == 'member' ? 'member' : 'addition';
     Profile? selectedMember = sourceType == 'member' ? data.profile : null;
 
     showCottageSheet(
@@ -295,11 +381,13 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                 Navigator.pop(ctx);
                 await _utilityService.addDeposit(
                   cottageId: data.profile.cottageId,
-                  userId: (selectedMember ?? data.profile).id,
+                  userId: sourceType == 'member' ? selectedMember!.id : null,
                   monthKey: data.monthKey,
                   amount: amount,
-                  sourceType: sourceType,
+                  sourceType: depositSourceType,
                   note: descCtrl.text.trim(),
+                  createdBy: data.profile.id,
+                  depositDate: _isoDate(selectedDate),
                 );
                 _refresh();
               },
@@ -324,6 +412,34 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
               ListTile(
                 title: Text(m.displayName),
                 onTap: () => Navigator.pop(ctx, m),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Same fixed category list as the web app's AddExpenseForm Select
+  /// (every UTILITY_CATEGORY_LABELS entry except 'other', which sits last
+  /// as its own option so picking it can reveal the custom-name field).
+  Future<String?> _pickCategory(BuildContext context) {
+    final options = [
+      ...utilityCategoryLabels.keys.where((k) => k != 'other'),
+      'other',
+    ];
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final key in options)
+              ListTile(
+                title: Text(utilityCategoryLabels[key]!),
+                onTap: () => Navigator.pop(ctx, key),
               ),
           ],
         ),
@@ -475,157 +591,42 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
 
         return Scaffold(
           backgroundColor: CottageColors.primary,
-          body: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.responsivePadding,
-                    8,
-                    context.responsivePadding,
-                    16,
-                  ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Utility Details',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 11), // Figma: gap-11
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(36),
-                        ),
-                        child: Text(
-                          _formatMonth(data.monthKey),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: CottageColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicUtilityDetailsHeaderDelegate(
+                    surface: surface,
+                    tabBar: _buildTabBar(),
+                    monthText: _formatMonth(data.monthKey),
+                    onDownload: () {
+                      showToast(
+                        context,
+                        'Summary report downloaded successfully',
+                      );
+                    },
+                    safeAreaTop: MediaQuery.of(context).padding.top,
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: surface.card,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            context.responsivePadding,
-                            24,
-                            context.responsivePadding,
-                            0,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Read-only record of every utility expense and deposit. No calculations happen here.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF303030),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              GestureDetector(
-                                onTap: () => showToast(
-                                  context,
-                                  'Summary report downloaded successfully',
-                                ),
-                                child: Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: _UtilityColors.border,
-                                    ),
-                                    borderRadius: BorderRadius.circular(1000),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.06,
-                                        ),
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.download_rounded,
-                                        size: 20,
-                                        color: _UtilityColors.darkText,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Download',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: _UtilityColors.darkText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTabBar(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _ExpenseTab(
-                                expenses: data.expenses,
-                                onRefresh: _refresh,
-                              ),
-                              _MemberDepositTab(
-                                deposits: memberDeposits,
-                                onRefresh: _refresh,
-                              ),
-                              _CottageDepositTab(
-                                deposits: cottageDeposits,
-                                onRefresh: _refresh,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _ExpenseTab(expenses: data.expenses, onRefresh: _refresh),
+                  _MemberDepositTab(
+                    deposits: memberDeposits,
+                    onRefresh: _refresh,
                   ),
-                ),
-              ],
+                  _CottageDepositTab(
+                    deposits: cottageDeposits,
+                    onRefresh: _refresh,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -650,6 +651,284 @@ class _UtilityData {
   });
 }
 
+/// Collapsing header for [UtilitiesScreen] -- same mechanics as
+/// _DynamicMealHeaderDelegate (meal_screen.dart): the orange band retreats
+/// into a compact pinned bar as the tab content below scrolls, with the
+/// description + Download button + tab bar always pinned to the header's
+/// bottom edge.
+class _DynamicUtilityDetailsHeaderDelegate
+    extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final Widget tabBar;
+  final String monthText;
+  final VoidCallback onDownload;
+  final double safeAreaTop;
+
+  _DynamicUtilityDetailsHeaderDelegate({
+    required this.surface,
+    required this.tabBar,
+    required this.monthText,
+    required this.onDownload,
+    required this.safeAreaTop,
+  });
+
+  @override
+  double get minExtent => safeAreaTop + 150.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 234.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background: Orange top, White bottom
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height:
+              safeAreaTop +
+              56 -
+              (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: Container(color: CottageColors.primary),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+
+        // Expanded Content (Fades out) -- clipped in an OverflowBox since
+        // the enclosing box keeps shrinking continuously as the header
+        // collapses, so partway through the scroll it's already smaller
+        // than this Column's fixed content height; without this a
+        // RenderFlex overflow banner shows mid-scroll.
+        if (progress < 1.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: 1.0 - progress,
+              child: IgnorePointer(
+                ignoring: progress > 0.5,
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Orange Header Content
+                        Container(
+                          height: safeAreaTop + 56,
+                          padding: EdgeInsets.only(
+                            top: safeAreaTop,
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                          ),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Utility Details',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 11), // Figma: gap-11
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(36),
+                                ),
+                                child: Text(
+                                  monthText,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: CottageColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // White Card Content (Description)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                            top: 16,
+                          ),
+                          child: const Text(
+                            'Read-only record of every utility expense and deposit. No calculations happen here.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF303030),
+                            ),
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Collapsed Content (Fades in)
+        if (progress > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: progress,
+              child: IgnorePointer(
+                ignoring: progress < 0.5,
+                child: Container(
+                  padding: EdgeInsets.only(
+                    top: safeAreaTop + 8,
+                    left: context.responsivePadding,
+                    right: context.responsivePadding,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Utility Details',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: surface.foreground,
+                            ),
+                          ),
+                          const SizedBox(width: 11), // Figma: gap-11
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: CottageColors.primary,
+                              borderRadius: BorderRadius.circular(36),
+                            ),
+                            child: Text(
+                              monthText,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Common bottom elements (Download Button & TabBar)
+        Positioned(
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          bottom: 8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: onDownload,
+                    child: Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: _UtilityColors.border),
+                        borderRadius: BorderRadius.circular(1000),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.download_rounded,
+                            size: 20,
+                            color: _UtilityColors.darkText,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Download',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _UtilityColors.darkText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              tabBar,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(
+    covariant _DynamicUtilityDetailsHeaderDelegate oldDelegate,
+  ) {
+    return true;
+  }
+}
+
 // --- Add Expense/Deposit drawers (Figma "Section 5": nodes 77:1052,
 // 77:1154, 77:1255) -- icon+title+close header, gap-16 between fields,
 // each field a gap-6 label(+red asterisk)/box pair, fafafa/eee/radius-10
@@ -668,7 +947,11 @@ class _UtilityDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrollable, like CottageSheetContent, so a full form (all fields plus
+    // the keyboard covering half the screen) scrolls instead of overflowing
+    // -- showCottageSheet only caps the sheet's max height, it doesn't make
+    // its content scrollable on its own.
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -709,6 +992,49 @@ class _UtilityDrawer extends StatelessWidget {
           ),
           for (final child in children) ...[const SizedBox(height: 16), child],
         ],
+      ),
+    );
+  }
+}
+
+/// One choice in the Payment Source picker (Member / Cottage Balance /
+/// None) -- mirrors the web app's AddExpenseForm radio group, styled as a
+/// pill to match this drawer's other toggle-like controls.
+class _PaymentSourceOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PaymentSourceOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _UtilityColors.saveButton : _UtilityColors.fieldBg,
+          border: Border.all(
+            color: selected
+                ? _UtilityColors.saveButton
+                : _UtilityColors.border,
+          ),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : _UtilityColors.darkText,
+          ),
+        ),
       ),
     );
   }
@@ -1092,7 +1418,7 @@ class _ExpenseTab extends StatelessWidget {
           context.responsivePadding,
           0,
           context.responsivePadding,
-          24 + MediaQuery.paddingOf(context).bottom,
+          context.bottomNavClearance,
         ),
         itemCount: expenses.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),
@@ -1195,7 +1521,7 @@ class _MemberDepositTab extends StatelessWidget {
           context.responsivePadding,
           0,
           context.responsivePadding,
-          24 + MediaQuery.paddingOf(context).bottom,
+          context.bottomNavClearance,
         ),
         itemCount: deposits.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),
@@ -1317,7 +1643,7 @@ class _CottageDepositTab extends StatelessWidget {
           context.responsivePadding,
           0,
           context.responsivePadding,
-          24 + MediaQuery.paddingOf(context).bottom,
+          context.bottomNavClearance,
         ),
         itemCount: deposits.length,
         separatorBuilder: (_, _) => const SizedBox(height: 16),

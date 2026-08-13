@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/bazaar_duty_models.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
+import '../../menu/presentation/members_screen.dart';
 
 const _months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -44,6 +45,11 @@ _RowStatus _rowStatus(BazaarDuty duty) {
   return _RowStatus.next;
 }
 
+/// A row's tint pair -- a light background that stays legible under
+/// [statusColor]/dark body text in light mode, and a low-alpha version of
+/// the same accent over the card in dark mode (mirrors [CottageSurface]'s
+/// own light/dark tone-pair pattern in theme.dart, just for the extra
+/// purple/blue/peach hues this roster needs that theme.dart doesn't model).
 class _RowColors {
   final Color background;
   final Color avatarBackground;
@@ -55,26 +61,26 @@ class _RowColors {
   });
 }
 
-const _purple = _RowColors(
-  background: Color(0xFFF9F3FF),
-  avatarBackground: Color(0xFF7035BA),
-  statusColor: Color(0xFF63B64E),
-);
-const _blue = _RowColors(
-  background: Color(0xFFEEF2FF),
-  avatarBackground: Color(0xFF7192FF),
-  statusColor: Color(0xFF63B64E),
-);
-const _green = _RowColors(
-  background: Color(0xFFE5FFDF),
-  avatarBackground: Color(0xFF63B64E),
-  statusColor: Color(0xFF63B64E),
-);
-const _orange = _RowColors(
-  background: Color(0xFFFFF3EF),
-  avatarBackground: Color(0xFFF3C5BB),
-  statusColor: Color(0xFFFFAB99),
-);
+_RowColors _purple(bool dark) => _RowColors(
+      background: dark ? const Color(0x337035BA) : const Color(0xFFF9F3FF),
+      avatarBackground: const Color(0xFF7035BA),
+      statusColor: const Color(0xFF63B64E),
+    );
+_RowColors _blue(bool dark) => _RowColors(
+      background: dark ? const Color(0x337192FF) : const Color(0xFFEEF2FF),
+      avatarBackground: const Color(0xFF7192FF),
+      statusColor: const Color(0xFF63B64E),
+    );
+_RowColors _green(bool dark) => _RowColors(
+      background: dark ? const Color(0x3363B64E) : const Color(0xFFE5FFDF),
+      avatarBackground: const Color(0xFF63B64E),
+      statusColor: const Color(0xFF63B64E),
+    );
+_RowColors _orange(bool dark) => _RowColors(
+      background: dark ? const Color(0x33FFAB99) : const Color(0xFFFFF3EF),
+      avatarBackground: const Color(0xFFF3C5BB),
+      statusColor: const Color(0xFFFFAB99),
+    );
 
 /// Every member's upcoming/current bazaar duty, one shared roster instead of
 /// each member only seeing their own. Pixel-matches the Figma "Bazaar Duty"
@@ -86,12 +92,14 @@ class BazaarDutyRoster extends StatelessWidget {
   final List<BazaarDuty> duties;
   final Map<String, Profile> membersById;
   final String currentUserId;
+  final String cottageId;
 
   const BazaarDutyRoster({
     super.key,
     required this.duties,
     required this.membersById,
     required this.currentUserId,
+    required this.cottageId,
   });
 
   /// One row per member instead of one per duty row -- [duties] holds every
@@ -131,6 +139,9 @@ class BazaarDutyRoster extends StatelessWidget {
   Widget build(BuildContext context) {
     if (duties.isEmpty) return const SizedBox.shrink();
 
+    final surface = context.surface;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
     final sortedDuties = _oncePerMember(duties)
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
@@ -142,13 +153,13 @@ class BazaarDutyRoster extends StatelessWidget {
       final isMe = duty.userId == currentUserId;
 
       if (status == _RowStatus.onGoing) {
-        rows.add(_OnGoingCard(duty: duty, member: member, isMe: isMe, colors: _green));
+        rows.add(_OnGoingCard(duty: duty, member: member, isMe: isMe, colors: _green(dark)));
         continue;
       }
 
       final colors = status == _RowStatus.complete
-          ? (completeIndex.isEven ? _purple : _blue)
-          : _orange;
+          ? (completeIndex.isEven ? _purple(dark) : _blue(dark))
+          : _orange(dark);
       if (status == _RowStatus.complete) completeIndex++;
       final label = status == _RowStatus.complete ? 'Complete' : 'Next';
       rows.add(
@@ -160,7 +171,7 @@ class BazaarDutyRoster extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surface.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -178,11 +189,18 @@ class BazaarDutyRoster extends StatelessWidget {
             children: [
               Text(
                 'Bazar Duty Roster',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: surface.foreground),
               ),
-              Text(
-                'Edit',
-                style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF7238BD)),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => MembersScreen(cottageId: cottageId),
+                  ),
+                ),
+                child: Text(
+                  'Edit',
+                  style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF7238BD)),
+                ),
               ),
             ],
           ),
@@ -196,6 +214,12 @@ class BazaarDutyRoster extends StatelessWidget {
     );
   }
 }
+
+/// Shared padding for every roster row's container -- kept identical across
+/// [_DutyPillRow] and [_OnGoingCard] so their status labels (both pushed
+/// flush right by a `Spacer()` in [_DutyInfo]) land on the exact same right
+/// edge instead of drifting depending on which row shape it is.
+const _rowPadding = EdgeInsets.only(left: 10, right: 24, top: 12, bottom: 12);
 
 /// Shared avatar/name/status/date-range block used by both the pill rows and
 /// the expanded on-going card.
@@ -216,6 +240,7 @@ class _DutyInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final name = member?.displayName ?? 'Member';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,28 +248,26 @@ class _DutyInfo extends StatelessWidget {
       children: [
         Row(
           children: [
-            Flexible(
+            Expanded(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Flexible(
                     child: Text(
                       name,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black),
+                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500, color: surface.foreground),
                     ),
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 6),
                     Text(
                       '(you)',
-                      style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF909090)),
+                      style: GoogleFonts.outfit(fontSize: 12, color: surface.mutedForeground),
                     ),
                   ],
                 ],
               ),
             ),
-            const Spacer(),
             Text(
               statusLabel,
               style: GoogleFonts.outfit(fontSize: 13, color: statusColor),
@@ -254,13 +277,13 @@ class _DutyInfo extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xFF909090)),
+            Icon(Icons.calendar_today_outlined, size: 12, color: surface.mutedForeground),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 '${_formatDate(duty.startDate)}  -  ${_formatDate(duty.endDate)}',
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF909090)),
+                style: GoogleFonts.outfit(fontSize: 12, color: surface.mutedForeground),
               ),
             ),
           ],
@@ -298,7 +321,7 @@ class _DutyPillRow extends StatelessWidget {
       ),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.only(left: 10, right: 24, top: 12, bottom: 12),
+        padding: _rowPadding,
         decoration: BoxDecoration(color: colors.background, borderRadius: BorderRadius.circular(100)),
         child: Row(
           children: [
@@ -346,7 +369,7 @@ class _OnGoingCard extends StatelessWidget {
       ),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        padding: _rowPadding,
         decoration: BoxDecoration(color: colors.background, borderRadius: BorderRadius.circular(25)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,7 +390,7 @@ class _OnGoingCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _WeekStrip(startDate: duty.startDate, endDate: duty.endDate),
+            _DutyDayStrip(startDate: duty.startDate, endDate: duty.endDate),
           ],
         ),
       ),
@@ -375,70 +398,77 @@ class _OnGoingCard extends StatelessWidget {
   }
 }
 
-/// Mini Sunday-first week calendar for the member currently on duty --
-/// filled green circles mark the duty's actual days within that calendar
-/// week, matching the Figma spec's "S M T W T F S" strip.
-class _WeekStrip extends StatelessWidget {
+/// Every day of the duty's own assigned range (start through end inclusive)
+/// -- not just whichever single calendar week the start date happens to
+/// fall in, since a duty can span a week boundary (e.g. Thu through the
+/// following Tue). Wraps onto a second line if the range is long. Days that
+/// have already happened (today included) are filled solid green; days
+/// still ahead show as an outlined circle so "assigned but not yet done" is
+/// visually distinct from "done".
+class _DutyDayStrip extends StatelessWidget {
   final String startDate;
   final String endDate;
 
-  const _WeekStrip({required this.startDate, required this.endDate});
+  const _DutyDayStrip({required this.startDate, required this.endDate});
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     final start = DateTime.parse(startDate);
     final end = DateTime.parse(endDate);
-    final daysSinceSunday = start.weekday % 7; // Mon=1..Sun=7 -> Sun=0
-    final weekStart = start.subtract(Duration(days: daysSinceSunday));
-    final weekDays = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    bool isFilled(DateTime d) => !d.isBefore(start) && !d.isAfter(end);
+    final days = <DateTime>[];
+    for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+      days.add(d);
+    }
 
-    return Column(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 10,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (int i = 0; i < weekDays.length; i++)
-              Text(
-                _weekdayLetters[i],
-                style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFFAA84B7)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (final d in weekDays)
-              isFilled(d)
-                  ? Container(
-                      width: 37,
-                      height: 37,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF63B64E),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 5, offset: const Offset(0, 2)),
-                        ],
-                      ),
-                      child: Text(
-                        '${d.day}',
-                        style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white),
-                      ),
-                    )
-                  : SizedBox(
-                      width: 37,
-                      height: 37,
-                      child: Center(
-                        child: Text(
-                          '${d.day}',
-                          style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF414141)),
-                        ),
-                      ),
-                    ),
-          ],
+        for (final d in days) _DayCell(date: d, done: !d.isAfter(today), surface: surface),
+      ],
+    );
+  }
+}
+
+class _DayCell extends StatelessWidget {
+  final DateTime date;
+  final bool done;
+  final CottageSurface surface;
+
+  const _DayCell({required this.date, required this.done, required this.surface});
+
+  @override
+  Widget build(BuildContext context) {
+    final letter = _weekdayLetters[date.weekday % 7];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(letter, style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFFAA84B7))),
+        const SizedBox(height: 6),
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: done ? const Color(0xFF63B64E) : Colors.transparent,
+            shape: BoxShape.circle,
+            border: done ? null : Border.all(color: surface.border),
+            boxShadow: done
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 5, offset: const Offset(0, 2))]
+                : null,
+          ),
+          child: Text(
+            '${date.day}',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: done ? Colors.white : surface.foreground,
+            ),
+          ),
         ),
       ],
     );
@@ -460,7 +490,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
+        border: Border.all(color: context.surface.card, width: 3),
       ),
       child: Center(
         child: ClipOval(
@@ -495,6 +525,7 @@ void _showDutyDetails(
 
   showModalBottomSheet(
     context: context,
+    backgroundColor: surface.card,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -532,24 +563,27 @@ void _showDutyDetails(
                   ? Text(initial, style: const TextStyle(fontWeight: FontWeight.bold))
                   : null,
             ),
-            title: Text(name + (isMe ? ' (You)' : ''), style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Status: $statusLabel'),
+            title: Text(
+              name + (isMe ? ' (You)' : ''),
+              style: TextStyle(fontWeight: FontWeight.bold, color: surface.foreground),
+            ),
+            subtitle: Text('Status: $statusLabel', style: TextStyle(color: surface.mutedForeground)),
           ),
-          const Divider(),
+          Divider(color: surface.border),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Start Date:', style: TextStyle(color: Colors.grey)),
-              Text(_formatDate(duty.startDate), style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('Start Date:', style: TextStyle(color: surface.mutedForeground)),
+              Text(_formatDate(duty.startDate), style: TextStyle(fontWeight: FontWeight.w600, color: surface.foreground)),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('End Date:', style: TextStyle(color: Colors.grey)),
-              Text(_formatDate(duty.endDate), style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('End Date:', style: TextStyle(color: surface.mutedForeground)),
+              Text(_formatDate(duty.endDate), style: TextStyle(fontWeight: FontWeight.w600, color: surface.foreground)),
             ],
           ),
           if (duty.note != null && duty.note!.isNotEmpty) ...[

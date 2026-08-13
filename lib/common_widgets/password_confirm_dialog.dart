@@ -107,6 +107,7 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
@@ -114,7 +115,7 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
         width: 311,
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surface.card,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -136,8 +137,8 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: widget.destructive
-                      ? const Color(0xFFFFE9E9)
-                      : const Color(0xFFFBE9E2),
+                      ? surface.toneRedBg
+                      : surface.toneOrangeBg,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -153,20 +154,20 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
             Text(
               widget.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2A2A2A),
+                color: surface.foreground,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               widget.message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.4,
-                color: Color(0xFF707070),
+                color: surface.mutedForeground,
               ),
             ),
             const SizedBox(height: 16),
@@ -175,25 +176,26 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
               obscureText: _obscure,
               autofocus: true,
               onSubmitted: (_) => _confirm(),
+              style: TextStyle(color: surface.foreground),
               decoration: InputDecoration(
                 hintText: 'Your password',
                 filled: true,
-                fillColor: const Color(0xFFFAFAFA),
+                fillColor: surface.background,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                  borderSide: BorderSide(color: surface.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                  borderSide: BorderSide(color: surface.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+                  borderSide: BorderSide(color: surface.border),
                 ),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -201,6 +203,7 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
                     size: 18,
+                    color: surface.mutedForeground,
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
@@ -222,9 +225,9 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
                     onTap: _verifying
                         ? null
                         : () => Navigator.pop(context, false),
-                    background: Colors.white,
-                    textColor: const Color(0xFF404040),
-                    border: Border.all(color: const Color(0xFFEEEEEE)),
+                    background: surface.card,
+                    textColor: surface.foreground,
+                    border: Border.all(color: surface.border),
                   ),
                 ),
                 const SizedBox(width: 10),

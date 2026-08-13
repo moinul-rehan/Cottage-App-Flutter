@@ -58,7 +58,7 @@ class UtilityExpenseList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cottage Utility Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF1E1E1E))),
+        Text('Cottage Utility Overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: context.surface.foreground)),
         const SizedBox(height: 16),
         for (int i = 0; i < rows.length; i++) ...[
           rows[i],
@@ -88,14 +88,15 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surface.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF0F0F0)),
+          border: Border.all(color: surface.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -118,9 +119,9 @@ class _Row extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+                  Text(label, style: TextStyle(fontSize: 14, color: surface.mutedForeground)),
                   const SizedBox(height: 4),
-                  Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF374151))),
+                  Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: surface.foreground)),
                 ],
               ),
             ),

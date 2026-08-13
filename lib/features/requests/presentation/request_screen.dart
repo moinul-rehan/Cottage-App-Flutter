@@ -134,6 +134,7 @@ class _RequestScreenState extends State<RequestScreen>
     try {
       await _requestService.approveMealCostRequest(
         r,
+        cottageId: data.profile.cottageId,
         reviewerId: data.profile.id,
       );
     } catch (e) {
@@ -163,7 +164,9 @@ class _RequestScreenState extends State<RequestScreen>
     showCottageSheet(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => CottageSheetContent(
+        builder: (sheetContext, setSheetState) {
+          final surface = sheetContext.surface;
+          return CottageSheetContent(
           title: 'New Request',
           children: [
             Row(
@@ -186,9 +189,9 @@ class _RequestScreenState extends State<RequestScreen>
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Date',
-              style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+              style: TextStyle(fontSize: 13, color: surface.foreground),
             ),
             const SizedBox(height: 6),
             GestureDetector(
@@ -210,15 +213,15 @@ class _RequestScreenState extends State<RequestScreen>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAFA),
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                  color: surface.background,
+                  border: Border.all(color: surface.border),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   _formatDate(date),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF404040),
+                    color: surface.foreground,
                   ),
                 ),
               ),
@@ -245,9 +248,9 @@ class _RequestScreenState extends State<RequestScreen>
             ] else ...[
               _RequestNumberField(label: 'Amount (৳)', controller: amountCtrl),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Items purchased (optional)',
-                style: TextStyle(fontSize: 13, color: Color(0xFF404040)),
+                style: TextStyle(fontSize: 13, color: surface.foreground),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -296,7 +299,8 @@ class _RequestScreenState extends State<RequestScreen>
               child: const Text('Submit Request'),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -383,7 +387,7 @@ class _RequestScreenState extends State<RequestScreen>
                 context.responsivePadding,
                 16,
                 context.responsivePadding,
-                24 + MediaQuery.paddingOf(context).bottom,
+                context.bottomNavClearance,
               ),
               children: [
                 for (final r in meals)
@@ -513,6 +517,7 @@ class _RequestTabSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     Widget item(int index, String label) {
       final active = activeIndex == index;
       return Expanded(
@@ -522,7 +527,7 @@ class _RequestTabSwitcher extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: active ? CottageColors.primary : const Color(0xFFFAFAFA),
+              color: active ? CottageColors.primary : surface.background,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -530,7 +535,7 @@ class _RequestTabSwitcher extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: active ? Colors.white : const Color(0xFF404040),
+                color: active ? Colors.white : surface.foreground,
               ),
             ),
           ),
@@ -541,8 +546,8 @@ class _RequestTabSwitcher extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3.2),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        color: surface.card,
+        border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -638,12 +643,13 @@ class _RequestCardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFEEEEEE)),
+        color: surface.card,
+        border: Border.all(color: surface.border),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -656,7 +662,7 @@ class _RequestCardShell extends StatelessWidget {
                 height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFBEAE5),
+                  color: surface.accent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: CottageColors.primary),
@@ -668,18 +674,18 @@ class _RequestCardShell extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: Color(0xFF17191E),
+                        color: surface.foreground,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF7A818D),
+                        color: surface.mutedForeground,
                       ),
                     ),
                   ],
@@ -696,8 +702,8 @@ class _RequestCardShell extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onReject,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFEEEEEE)),
-                      foregroundColor: const Color(0xFF404040),
+                      side: BorderSide(color: surface.border),
+                      foregroundColor: surface.foreground,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(999),
                       ),
@@ -769,15 +775,16 @@ class _RequestKindChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? CottageColors.primary : const Color(0xFFFAFAFA),
+          color: selected ? CottageColors.primary : surface.background,
           border: Border.all(
-            color: selected ? CottageColors.primary : const Color(0xFFEEEEEE),
+            color: selected ? CottageColors.primary : surface.border,
           ),
           borderRadius: BorderRadius.circular(10),
         ),
@@ -786,7 +793,7 @@ class _RequestKindChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : const Color(0xFF404040),
+            color: selected ? Colors.white : surface.foreground,
           ),
         ),
       ),
@@ -801,12 +808,13 @@ class _RequestNumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+          style: TextStyle(fontSize: 13, color: surface.foreground),
         ),
         const SizedBox(height: 6),
         TextField(

@@ -5,6 +5,8 @@ import 'package:cottage/helpers/supabase_service.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/app_scaffold.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
+import 'package:cottage/helpers/ui_helpers.dart';
+import 'notification_navigation.dart';
 
 /// Full notifications list -- mirrors src/app/(house)/notifications/page.tsx
 /// and NotificationRow.tsx.
@@ -138,86 +140,109 @@ class _NotificationTile extends StatelessWidget {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
+  bool get _hasLink => notification.link != null && notification.link!.trim().isNotEmpty;
+
+  Future<void> _open(BuildContext context) async {
+    onMarkRead();
+    if (openNotificationDestination(context, notification)) return;
+    if (!_hasLink) return;
+    final opened = await openNotificationLink(notification.link);
+    if (!opened && context.mounted) {
+      showToast(context, 'Could not open this notification\'s link.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final categoryLabel = platformCategoryLabel(notification.type);
-    return Container(
-      decoration: BoxDecoration(
-        color: notification.isRead ? surface.card : surface.accent.withValues(alpha: 0.4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: surface.border),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            margin: const EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(color: surface.accent, shape: BoxShape.circle),
-            child: Icon(notificationIconFor(notification.type), size: 14, color: surface.accentForeground),
+        onTap: () => _open(context),
+        child: Container(
+          decoration: BoxDecoration(
+            color: notification.isRead ? surface.card : surface.accent.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: surface.border),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(color: surface.accent, shape: BoxShape.circle),
+                child: Icon(notificationIconFor(notification.type), size: 14, color: surface.accentForeground),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 6,
-                        children: [
-                          Text(
-                            notification.title,
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: surface.foreground),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            children: [
+                              Text(
+                                notification.title,
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: surface.foreground),
+                              ),
+                              if (categoryLabel != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: CottageColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    categoryLabel.toUpperCase(),
+                                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: CottageColors.primary, letterSpacing: 0.4),
+                                  ),
+                                ),
+                            ],
                           ),
-                          if (categoryLabel != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: CottageColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                categoryLabel.toUpperCase(),
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: CottageColors.primary, letterSpacing: 0.4),
-                              ),
-                            ),
+                        ),
+                        if (!notification.isRead)
+                          Container(
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: CottageColors.primary, borderRadius: BorderRadius.circular(10)),
+                            child: const Text('New', style: TextStyle(fontSize: 10, color: CottageColors.primaryForeground, fontWeight: FontWeight.w600)),
+                          ),
+                        if (_hasLink) ...[
+                          const SizedBox(width: 4),
+                          Icon(Icons.chevron_right, size: 18, color: surface.mutedForeground),
                         ],
-                      ),
+                      ],
                     ),
-                    if (!notification.isRead)
-                      Container(
-                        margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: CottageColors.primary, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('New', style: TextStyle(fontSize: 10, color: CottageColors.primaryForeground, fontWeight: FontWeight.w600)),
+                    if (notification.body != null && notification.body!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(notification.body!, style: TextStyle(fontSize: 12.5, color: surface.mutedForeground)),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 11, color: surface.mutedForeground.withValues(alpha: 0.8))),
+                    if (!notification.isRead) ...[
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GestureDetector(
+                          onTap: onMarkRead,
+                          child: Text('Mark read', style: TextStyle(fontSize: 12, color: CottageColors.primary, fontWeight: FontWeight.w600)),
+                        ),
                       ),
+                    ],
                   ],
                 ),
-                if (notification.body != null && notification.body!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(notification.body!, style: TextStyle(fontSize: 12.5, color: surface.mutedForeground)),
-                ],
-                const SizedBox(height: 4),
-                Text(_relativeTime(notification.createdAt), style: TextStyle(fontSize: 11, color: surface.mutedForeground.withValues(alpha: 0.8))),
-                if (!notification.isRead) ...[
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: onMarkRead,
-                      child: Text('Mark read', style: TextStyle(fontSize: 12, color: CottageColors.primary, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

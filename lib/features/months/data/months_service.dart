@@ -12,6 +12,9 @@ class MonthsService {
   final _client = SupabaseService.client;
 
   Future<MonthStats> getMonthStats(String cottageId, String monthKey) async {
+    // Mirrors web's getMonthlyDues/getMonthHistory: adjustments + carry-ins
+    // (both meal and utility kind, per web's own unfiltered sum) minus
+    // member deposits -- not just raw utility_adjustments.
     final utilityRows = await _client
         .from('utility_adjustments')
         .select('amount')
@@ -20,6 +23,25 @@ class MonthsService {
     double totalUtilityDue = 0;
     for (final row in utilityRows as List) {
       totalUtilityDue += (row['amount'] as num).toDouble();
+    }
+
+    final carryInRows = await _client
+        .from('utility_carry_ins')
+        .select('amount')
+        .eq('cottage_id', cottageId)
+        .eq('month_key', monthKey);
+    for (final row in carryInRows as List) {
+      totalUtilityDue += (row['amount'] as num).toDouble();
+    }
+
+    final depositRows = await _client
+        .from('utility_deposits')
+        .select('amount')
+        .eq('cottage_id', cottageId)
+        .eq('month_key', monthKey)
+        .eq('source_type', 'member');
+    for (final row in depositRows as List) {
+      totalUtilityDue -= (row['amount'] as num).toDouble();
     }
 
     final bazaarRows = await _client
