@@ -52,14 +52,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final currentUserId = SupabaseService.currentUser?.id;
-    final validPreloaded = (widget.preloadedData != null &&
+    final validPreloaded =
+        (widget.preloadedData != null &&
             widget.preloadedData!.$1.id == currentUserId)
         ? widget.preloadedData
         : null;
 
-    _future = validPreloaded != null
-        ? Future.value(validPreloaded)
-        : _load();
+    _future = validPreloaded != null ? Future.value(validPreloaded) : _load();
   }
 
   @override

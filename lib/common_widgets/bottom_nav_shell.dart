@@ -1,5 +1,3 @@
-import 'dart:ui' show lerpDouble;
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cottage/features/dashboard/data/dashboard_data.dart';
@@ -511,7 +509,7 @@ class _FloatingNavBar extends StatelessWidget {
 /// No visible text label is ever rendered here -- mirrors the web's
 /// `<span className="sr-only">{label}</span>` (icon-only bar; the label
 /// exists only for screen readers).
-class _NavTab extends StatefulWidget {
+class _NavTab extends StatelessWidget {
   final _NavTabData data;
   final bool active;
   final VoidCallback onTap;
@@ -523,131 +521,125 @@ class _NavTab extends StatefulWidget {
   });
 
   @override
-  State<_NavTab> createState() => _NavTabState();
-}
-
-class _NavTabState extends State<_NavTab> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  // Web's SpeedDialMenu constants: 320ms ease-out-back (overshoot) expanding
-  // into the active state, 260ms ease-in-cubic collapsing out of it.
-  static const _expandMs = 320;
-  static const _collapseMs = 260;
-  static const _expandCurve = Cubic(0.34, 1.56, 0.64, 1);
-  static const _collapseCurve = Cubic(0.32, 0, 0.67, 0);
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: _expandMs),
-      reverseDuration: const Duration(milliseconds: _collapseMs),
-      value: widget.active ? 1 : 0,
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _NavTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.active != oldWidget.active) {
-      widget.active ? _controller.forward() : _controller.reverse();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final data = widget.data;
     final surface = context.surface;
-    return InkWell(
-      onTap: widget.onTap,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            final curve = _controller.status == AnimationStatus.reverse
-                ? _collapseCurve
-                : _expandCurve;
-            final t = curve.transform(_controller.value).clamp(0.0, 1.0);
-            final active = widget.active;
-            // Sized to hug the icon exactly: icon + 4px padding on every
-            // side + the 4px ring itself (40 = 24 + 2*4 + 2*4), instead of
-            // a fixed bubble size with whatever leftover space happened to
-            // fall around the icon.
-            final size = lerpDouble(36, 40, t)!;
-            final ringPadding = lerpDouble(0, 8, t)!;
-            return Container(
-              margin: EdgeInsets.only(bottom: lerpDouble(0, 64, t)!),
-              width: size,
-              height: size,
-              padding: EdgeInsets.all(ringPadding),
+    
+    // The base icon (shown when inactive)
+    Widget baseIcon = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(
+          data.icon,
+          size: 24,
+          color: surface.navInactive,
+        ),
+        if ((data.badge ?? 0) > 0)
+          Positioned(
+            top: -4,
+            right: -6,
+            child: Container(
+              alignment: Alignment.center,
+              constraints: const BoxConstraints(
+                minWidth: 16,
+                minHeight: 16,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: active ? CottageColors.primary : Colors.transparent,
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-                border: active
-                    ? Border.all(color: surface.background, width: 4)
-                    : null,
+                color: CottageColors.destructive,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: surface.navBackground,
+                  width: 2,
+                ),
               ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(
-                    data.icon,
-                    size: active ? 24 : 20,
-                    color: active
-                        ? CottageColors.primaryForeground
-                        : surface.navInactive,
+              child: Text(
+                data.badge! > 9 ? '9+' : '${data.badge}',
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        height: 64, // Same as the navbar height
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            // BASE LAYER: The normal icon fades out smoothly
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: active ? 0.0 : 1.0,
+              child: baseIcon,
+            ),
+            
+            // TOP LAYER: The floating widget pops in with a bounce
+            Positioned(
+              bottom: 16, // Pushes it up to match the screenshot intersection
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                scale: active ? 1.0 : 0.0,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: CottageColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: surface.background, width: 4),
                   ),
-                  if ((data.badge ?? 0) > 0)
-                    Positioned(
-                      top: -4,
-                      right: -6,
-                      child: Container(
-                        alignment: Alignment.center,
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          color: CottageColors.destructive,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: surface.navBackground,
-                            width: 2,
-                          ),
-                        ),
-                        child: Text(
-                          data.badge! > 9 ? '9+' : '${data.badge}',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        data.icon,
+                        size: 24,
+                        color: CottageColors.primaryForeground,
                       ),
-                    ),
-                ],
+                      if ((data.badge ?? 0) > 0)
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Container(
+                            alignment: Alignment.center,
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              color: CottageColors.destructive,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: CottageColors.primary,
+                                width: 2,
+                              ),
+                            ),
+                            child: Text(
+                              data.badge! > 9 ? '9+' : '${data.badge}',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );

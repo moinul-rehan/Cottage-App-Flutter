@@ -154,7 +154,8 @@ class _AuthGateState extends State<_AuthGate> {
       if (state.session != null) {
         NavigationService.popToRoot();
         PushNotificationService.registerToken();
-      } else if (state.event == AuthChangeEvent.signedOut || state.session == null) {
+      } else if (state.event == AuthChangeEvent.signedOut ||
+          state.session == null) {
         NavigationService.popToRoot();
         PushNotificationService.unregisterToken();
       }
@@ -182,9 +183,9 @@ class _AuthGateState extends State<_AuthGate> {
 
         final preloaded =
             (widget.preloadedDashboard != null &&
-                    widget.preloadedDashboard!.$1.id == session.user.id)
-                ? widget.preloadedDashboard
-                : null;
+                widget.preloadedDashboard!.$1.id == session.user.id)
+            ? widget.preloadedDashboard
+            : null;
 
         return BottomNavShell(preloadedDashboard: preloaded);
       },
@@ -265,8 +266,6 @@ class CottageScrollBehavior extends MaterialScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
-    return const BouncingScrollPhysics(
-      parent: AlwaysScrollableScrollPhysics(),
-    );
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 }
