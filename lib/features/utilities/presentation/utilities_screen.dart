@@ -111,7 +111,11 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
     );
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // Block body -- see contacts_screen.dart's _refresh for why the arrow
+  // form is a real bug (setState() callback implicitly returning a Future).
+  void _refresh() => setState(() {
+    _future = _load();
+  });
 
   static String _isoDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

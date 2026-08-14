@@ -261,7 +261,7 @@ class BottomNavShellState extends State<BottomNavShell> {
             ? _SpeedDialItemData(
                 key: 'add-bazaar',
                 label: 'Add Meal Expense',
-                icon: Icons.shopping_cart_outlined,
+                icon: LucideIcons.shoppingBag,
                 bgColor: const Color(0xFFFEF3C7),
                 fgColor: const Color(0xFF92400E),
                 onTap: () {

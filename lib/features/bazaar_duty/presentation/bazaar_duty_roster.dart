@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../data/bazaar_duty_models.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
@@ -545,7 +546,7 @@ void _showDutyDetails(
         children: [
           Row(
             children: [
-              const Icon(Icons.shopping_basket_outlined, color: CottageColors.primary),
+              const Icon(LucideIcons.shoppingBag, color: CottageColors.primary),
               const SizedBox(width: 10),
               Text(
                 'Bazaar Duty Details',

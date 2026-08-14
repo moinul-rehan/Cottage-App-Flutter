@@ -40,7 +40,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return _service.getNotifications(_userId, since);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // Block body -- see contacts_screen.dart's _refresh for why the arrow
+  // form is a real bug (setState() callback implicitly returning a Future).
+  void _refresh() => setState(() {
+    _future = _load();
+  });
 
   Future<void> _markRead(AppNotification n) async {
     if (n.isRead) return;

@@ -117,7 +117,11 @@ class _NoticesScreenState extends State<NoticesScreen>
     );
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // Block body -- see contacts_screen.dart's _refresh for why the arrow
+  // form is a real bug (setState() callback implicitly returning a Future).
+  void _refresh() => setState(() {
+    _future = _load();
+  });
 
   List<Notice> _visibleTo(List<Notice> notices, Profile profile) {
     return notices

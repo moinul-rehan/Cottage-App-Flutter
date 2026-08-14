@@ -183,7 +183,11 @@ class _NotificationSheetState extends State<_NotificationSheet> {
     if (n.isRead) return;
     await widget.service.markRead(n.id, widget.userId);
     widget.onChanged();
-    setState(() => _future = _load());
+    // Block body -- see contacts_screen.dart's _refresh for why the arrow
+    // form is a real bug (setState() callback implicitly returning a Future).
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _open(AppNotification n) async {

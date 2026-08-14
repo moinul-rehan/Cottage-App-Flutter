@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
 import '../data/meal_models.dart';
 import '../data/meal_service.dart';
@@ -105,7 +106,11 @@ class _MealScreenState extends State<MealScreen>
     );
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // Block body -- see contacts_screen.dart's _refresh for why the arrow
+  // form is a real bug (setState() callback implicitly returning a Future).
+  void _refresh() => setState(() {
+    _future = _load();
+  });
 
   /// Shares a plain-text summary of whichever tab is currently active --
   /// same rationale/pattern as UtilityStatementScreen/UtilitiesScreen's
@@ -560,7 +565,7 @@ class _MealScreenState extends State<MealScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _DrawerHeader(
-                icon: Icons.shopping_basket_outlined,
+                icon: LucideIcons.shoppingBag,
                 title: 'Add Bazar Cost',
                 onClose: () => Navigator.pop(ctx),
               ),
@@ -1269,7 +1274,7 @@ class _MealScreenState extends State<MealScreen>
             child: _buildTabItem(
               1,
               'Bazar',
-              Icons.shopping_basket_outlined,
+              LucideIcons.shoppingBag,
               surface,
             ),
           ),
@@ -1755,7 +1760,7 @@ class _BazaarTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data.bazaar.isEmpty) {
       return EmptyState(
-        icon: Icons.shopping_basket_rounded,
+        icon: LucideIcons.shoppingBag,
         title: 'No bazaar entries',
         subtitle: 'Record grocery purchases for this month.',
       );

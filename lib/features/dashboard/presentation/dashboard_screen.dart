@@ -89,7 +89,17 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _retry() {
-    setState(() => _future = _load());
+    // A block body, not `setState(() => _future = _load())`: that arrow
+    // form's "return value" is the assignment expression's own value --
+    // the Future _load() returns -- so the closure implicitly returns a
+    // Future, which is exactly the misuse setState() asserts against
+    // ("setState() callback argument returned a Future"). Seen triggered
+    // by didChangeAppLifecycleState above, which some devices fire on a
+    // brief resumed blip around a theme/status-bar appearance change (e.g.
+    // toggling dark mode), not just a real background/foreground cycle.
+    setState(() {
+      _future = _load();
+    });
   }
 
   /// Public so [DashboardScreen.dashboardScreenKey] can force a reload from

@@ -68,7 +68,14 @@ class _ContactsScreenState extends State<ContactsScreen>
     return _ContactsData(profile: profile, contacts: contacts);
   }
 
-  void _refresh() => setState(() => _future = _load());
+  // Block body, not `setState(() => _future = _load())` -- that arrow
+  // form's value is the assignment expression's own value (the Future
+  // _load() returns), so the closure would implicitly return a Future,
+  // which is exactly what setState() asserts against in debug mode
+  // ("setState() callback argument returned a Future").
+  void _refresh() => setState(() {
+    _future = _load();
+  });
 
   Future<void> _launch(String scheme, String value) async {
     final uri = Uri(scheme: scheme, path: value);

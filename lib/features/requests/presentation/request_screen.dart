@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
@@ -86,7 +87,11 @@ class _RequestScreenState extends State<RequestScreen>
   /// Public so [RequestScreen.requestScreenKey] can force a reload from
   /// BottomNavShell when this tab is switched back into, same as
   /// DashboardScreen.
-  void refresh() => setState(() => _future = _load());
+  // Block body -- see contacts_screen.dart's _refresh for why the arrow
+  // form is a real bug (setState() callback implicitly returning a Future).
+  void refresh() => setState(() {
+    _future = _load();
+  });
 
   String _isoDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -609,7 +614,7 @@ class _CostRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _RequestCardShell(
-      icon: Icons.shopping_basket_outlined,
+      icon: LucideIcons.shoppingBag,
       title: request.memberName ?? 'Member',
       subtitle:
           '${formatDate(request.entryDate)} · ৳${request.amount.toStringAsFixed(0)}'
