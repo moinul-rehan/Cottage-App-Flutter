@@ -57,7 +57,7 @@ class FeedbackService {
       'user_id': userId,
       'title': title,
       'description': description,
-      if (imageUrl != null) 'image_url': imageUrl,
+      'image_url': ?imageUrl,
     });
   }
 
