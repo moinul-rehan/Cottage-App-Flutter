@@ -1261,43 +1261,20 @@ class _MealScreenState extends State<MealScreen>
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildTabItem(
-              0,
-              'Meal Details',
-              Icons.restaurant_menu_rounded,
-              surface,
-            ),
-          ),
+          Expanded(child: _buildTabItem(0, 'Meal Details', surface)),
           const SizedBox(width: 3.2),
-          Expanded(
-            child: _buildTabItem(
-              1,
-              'Bazar',
-              LucideIcons.shoppingBag,
-              surface,
-            ),
-          ),
+          Expanded(child: _buildTabItem(1, 'Bazar', surface)),
           const SizedBox(width: 3.2),
-          Expanded(
-            child: _buildTabItem(
-              2,
-              'Deposit',
-              Icons.account_balance_wallet_outlined,
-              surface,
-            ),
-          ),
+          Expanded(child: _buildTabItem(2, 'Deposit', surface)),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(
-    int index,
-    String title,
-    IconData icon,
-    CottageSurface surface,
-  ) {
+  // Text-only, matching Figma (no per-tab icon) -- and matching
+  // UtilitiesScreen's segmented tab bar, which never had one either, so the
+  // two "Details" pages' tab bars now read as the same control.
+  Widget _buildTabItem(int index, String title, CottageSurface surface) {
     final active = _activeTabIndex == index;
     return GestureDetector(
       onTap: () {
@@ -1313,24 +1290,13 @@ class _MealScreenState extends State<MealScreen>
           color: active ? CottageColors.primary : surface.background,
           borderRadius: BorderRadius.circular(8.0),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: active ? Colors.white : surface.foreground,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 13, // Slightly smaller to fit with icon
-                color: active ? Colors.white : surface.foreground,
-              ),
-            ),
-          ],
+        child: Text(
+          title,
+          style: TextStyle(
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            fontSize: 13,
+            color: active ? Colors.white : surface.foreground,
+          ),
         ),
       ),
     );

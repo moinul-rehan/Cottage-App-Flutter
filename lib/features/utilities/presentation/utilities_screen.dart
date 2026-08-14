@@ -793,7 +793,7 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
       child: Container(
         padding: const EdgeInsets.all(3.217),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surface.card,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _UtilityColors.border(context), width: 0.8),
         ),
@@ -1123,11 +1123,11 @@ class _DynamicUtilityDetailsHeaderDelegate
                             right: context.responsivePadding,
                             top: 16,
                           ),
-                          child: const Text(
+                          child: Text(
                             'Read-only record of every utility expense and deposit. No calculations happen here.',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF303030),
+                              color: surface.foreground,
                             ),
                             maxLines: 2,
                           ),
@@ -1216,7 +1216,7 @@ class _DynamicUtilityDetailsHeaderDelegate
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.surface.card,
                           border: Border.all(color: _UtilityColors.border(context)),
                           borderRadius: BorderRadius.circular(1000),
                           boxShadow: [
@@ -1602,7 +1602,7 @@ class _UtilityCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surface.card,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _UtilityColors.border(context), width: 0.8),
       ),

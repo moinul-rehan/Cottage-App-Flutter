@@ -460,9 +460,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: Text(
-                          _loginSubmitting ? 'Signing in…' : 'Sign In',
-                        ),
+                        child: _loginSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Sign In'),
                       ),
                       const SizedBox(height: 16),
                       const MobileOrDivider(),
@@ -470,6 +477,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       MobileGoogleButton(
                         onPressed: _signInWithGoogle,
                         enabled: !_loginGoogleSubmitting,
+                        loading: _loginGoogleSubmitting,
                       ),
                     ],
                   ),
@@ -647,11 +655,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: Text(
-                          _signupSubmitting
-                              ? 'Creating your cottage…'
-                              : 'Sign up for a new Cottage',
-                        ),
+                        child: _signupSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Sign up for a new Cottage'),
                       ),
                       const SizedBox(height: 16),
                       const MobileOrDivider(),
@@ -659,6 +672,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       MobileGoogleButton(
                         onPressed: _signUpWithGoogle,
                         enabled: !_signupGoogleSubmitting,
+                        loading: _signupGoogleSubmitting,
                       ),
                     ],
                   ),

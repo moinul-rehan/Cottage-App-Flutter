@@ -434,10 +434,17 @@ class MobileGoogleButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     required this.enabled,
+    this.loading = false,
   });
 
   final VoidCallback onPressed;
   final bool enabled;
+  // `disabledBackgroundColor` used to be set to the exact same color as the
+  // enabled state, so tapping this while a sign-in was already in flight
+  // (native picker still loading, or a slow network) looked completely
+  // unresponsive -- same fill, same "Continue with Google" label, no
+  // indication anything happened. This swaps in a spinner in that window.
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -454,22 +461,31 @@ class MobileGoogleButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const GoogleGlyph(size: 24),
-            const SizedBox(width: 8),
-            Text(
-              'Continue with Google',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF242424),
+        child: loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: Color(0xFF242424),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const GoogleGlyph(size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Continue with Google',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF242424),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
