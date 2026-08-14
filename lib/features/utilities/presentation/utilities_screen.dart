@@ -13,20 +13,23 @@ import 'package:cottage/common_widgets/responsive_utils.dart';
 import 'package:cottage/helpers/ui_helpers.dart';
 import 'package:cottage/helpers/utility_categories.dart';
 
-/// Figma exact-match tokens for this screen's read-only record cards --
-/// intentionally literal hex (not [CottageSurface] tokens, which are close
-/// but not identical, e.g. surface.background #F4F4F6 vs Figma's #FAFAFA)
-/// since the ask here was pixel-exact fidelity to the design, not
-/// dark-mode adaptive theming.
+/// Was a set of literal Figma-exact hex constants (pixel-perfect in light
+/// mode, but the same fixed light colors in dark mode too -- e.g. a
+/// near-white #FAFAFA chip background never changed, which is exactly why
+/// this whole page still "looked like light mode" after switching to dark).
+/// Now each one resolves through [CottageSurface] so it adapts per theme;
+/// only [requiredMark]/[saveButton] (brand/semantic accents, not
+/// surface-dependent) stay fixed.
 class _UtilityColors {
   _UtilityColors._();
-  static const fieldBg = Color(0xFFFAFAFA);
-  static const border = Color(0xFFEEEEEE);
-  static const darkText = Color(0xFF404040);
-  static const placeholder = Color(0xFFAAAAAA);
-  static const highlightBg = Color(0xFFFDEFEC);
-  static const headingText = Color(0xFF17191E);
-  static const requiredMark = Color(0xFFCC4F4F);
+  static Color fieldBg(BuildContext context) => context.surface.background;
+  static Color border(BuildContext context) => context.surface.border;
+  static Color darkText(BuildContext context) => context.surface.foreground;
+  static Color placeholder(BuildContext context) =>
+      context.surface.mutedForeground;
+  static Color highlightBg(BuildContext context) => context.surface.accent;
+  static Color headingText(BuildContext context) => context.surface.foreground;
+  static const requiredMark = CottageColors.destructive;
   static const saveButton = Color(0xFFD1593B);
 }
 
@@ -204,9 +207,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                 hint: 'July electricity bill payment',
               ),
             ),
-            const Text(
+            Text(
               'Payment Source',
-              style: TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+              style: TextStyle(fontSize: 13, color: _UtilityColors.darkText(context)),
             ),
             const SizedBox(height: 6),
             Row(
@@ -245,9 +248,9 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                   'Paid from the shared fund — Cottage Balance decreases by this amount.',
                 _ => 'Recorded only. No balance or due changes.',
               },
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: _UtilityColors.placeholder,
+                color: _UtilityColors.placeholder(context),
               ),
             ),
             if (paymentSource == 'member')
@@ -792,7 +795,7 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _UtilityColors.border, width: 0.8),
+          border: Border.all(color: _UtilityColors.border(context), width: 0.8),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -821,7 +824,7 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
         padding: const EdgeInsets.symmetric(horizontal: 9.651, vertical: 6.434),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: active ? CottageColors.primary : _UtilityColors.fieldBg,
+          color: active ? CottageColors.primary : _UtilityColors.fieldBg(context),
           borderRadius: BorderRadius.circular(8.043),
         ),
         child: Text(
@@ -830,7 +833,7 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w400,
-            color: active ? Colors.white : _UtilityColors.darkText,
+            color: active ? Colors.white : _UtilityColors.darkText(context),
           ),
         ),
       ),
@@ -1214,7 +1217,7 @@ class _DynamicUtilityDetailsHeaderDelegate
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          border: Border.all(color: _UtilityColors.border),
+                          border: Border.all(color: _UtilityColors.border(context)),
                           borderRadius: BorderRadius.circular(1000),
                           boxShadow: [
                             BoxShadow(
@@ -1227,18 +1230,18 @@ class _DynamicUtilityDetailsHeaderDelegate
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.download_rounded,
                               size: 20,
-                              color: _UtilityColors.darkText,
+                              color: _UtilityColors.darkText(context),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Download',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: _UtilityColors.darkText,
+                                color: _UtilityColors.darkText(context),
                               ),
                             ),
                           ],
@@ -1294,15 +1297,15 @@ class _UtilityDrawer extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: _UtilityColors.headingText),
+              Icon(icon, size: 20, color: _UtilityColors.headingText(context)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
-                    color: _UtilityColors.headingText,
+                    color: _UtilityColors.headingText(context),
                   ),
                 ),
               ),
@@ -1313,13 +1316,13 @@ class _UtilityDrawer extends StatelessWidget {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _UtilityColors.fieldBg,
+                    color: _UtilityColors.fieldBg(context),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.close,
                     size: 16,
-                    color: _UtilityColors.headingText,
+                    color: _UtilityColors.headingText(context),
                   ),
                 ),
               ),
@@ -1353,11 +1356,11 @@ class _PaymentSourceOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? _UtilityColors.saveButton : _UtilityColors.fieldBg,
+          color: selected ? _UtilityColors.saveButton : _UtilityColors.fieldBg(context),
           border: Border.all(
             color: selected
                 ? _UtilityColors.saveButton
-                : _UtilityColors.border,
+                : _UtilityColors.border(context),
           ),
           borderRadius: BorderRadius.circular(999),
         ),
@@ -1367,7 +1370,7 @@ class _PaymentSourceOption extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : _UtilityColors.darkText,
+            color: selected ? Colors.white : _UtilityColors.darkText(context),
           ),
         ),
       ),
@@ -1389,9 +1392,9 @@ class _DrawerField extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: _UtilityColors.darkText,
+                color: _UtilityColors.darkText(context),
               ),
             ),
             const SizedBox(width: 2),
@@ -1409,8 +1412,8 @@ class _DrawerField extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: _UtilityColors.fieldBg,
-            border: Border.all(color: _UtilityColors.border),
+            color: _UtilityColors.fieldBg(context),
+            border: Border.all(color: _UtilityColors.border(context)),
             borderRadius: BorderRadius.circular(10),
           ),
           child: child,
@@ -1431,12 +1434,12 @@ class _DrawerTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       textCapitalization: TextCapitalization.sentences,
-      style: const TextStyle(fontSize: 13, color: _UtilityColors.darkText),
+      style: TextStyle(fontSize: 13, color: _UtilityColors.darkText(context)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
+        hintStyle: TextStyle(
           fontSize: 13,
-          color: _UtilityColors.placeholder,
+          color: _UtilityColors.placeholder(context),
         ),
         filled: false,
         border: InputBorder.none,
@@ -1470,8 +1473,8 @@ class _DrawerTapField extends StatelessWidget {
         style: TextStyle(
           fontSize: 13,
           color: isPlaceholder
-              ? _UtilityColors.placeholder
-              : _UtilityColors.darkText,
+              ? _UtilityColors.placeholder(context)
+              : _UtilityColors.darkText(context),
         ),
       ),
     );
@@ -1486,12 +1489,12 @@ class _DrawerAmountField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Text(
+        Text(
           '৳',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: _UtilityColors.placeholder,
+            color: _UtilityColors.placeholder(context),
           ),
         ),
         const SizedBox(width: 8),
@@ -1499,15 +1502,15 @@ class _DrawerAmountField extends StatelessWidget {
           child: TextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: _UtilityColors.darkText,
+              color: _UtilityColors.darkText(context),
             ),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: '0.00',
               hintStyle: TextStyle(
                 fontSize: 13,
-                color: _UtilityColors.placeholder,
+                color: _UtilityColors.placeholder(context),
               ),
               filled: false,
               border: InputBorder.none,
@@ -1601,7 +1604,7 @@ class _UtilityCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _UtilityColors.border, width: 0.8),
+        border: Border.all(color: _UtilityColors.border(context), width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1613,18 +1616,18 @@ class _UtilityCard extends StatelessWidget {
                   height: 38,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: _UtilityColors.fieldBg,
+                    color: _UtilityColors.fieldBg(context),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: _UtilityColors.border,
+                      color: _UtilityColors.border(context),
                       width: 0.8,
                     ),
                   ),
                   child: Text(
                     _formatCardDate(date),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: _UtilityColors.darkText,
+                      color: _UtilityColors.darkText(context),
                     ),
                   ),
                 ),
@@ -1671,9 +1674,9 @@ class _UtilityIconBox extends StatelessWidget {
         height: 38,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: _UtilityColors.fieldBg,
+          color: _UtilityColors.fieldBg(context),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: _UtilityColors.border, width: 0.8),
+          border: Border.all(color: _UtilityColors.border(context), width: 0.8),
         ),
         child: Icon(icon, size: 18, color: iconColor),
       ),
@@ -1701,9 +1704,9 @@ class _UtilityInfoRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: _UtilityColors.fieldBg,
+        color: _UtilityColors.fieldBg(context),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _UtilityColors.border, width: 0.8),
+        border: Border.all(color: _UtilityColors.border(context), width: 0.8),
       ),
       child: Row(
         children: [
@@ -1716,7 +1719,7 @@ class _UtilityInfoRow extends StatelessWidget {
               child: Container(
                 width: 1,
                 height: 21,
-                color: _UtilityColors.border,
+                color: _UtilityColors.border(context),
               ),
             ),
           ),
@@ -1725,7 +1728,7 @@ class _UtilityInfoRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: boldValue ? FontWeight.bold : FontWeight.w400,
-              color: _UtilityColors.darkText,
+              color: _UtilityColors.darkText(context),
             ),
           ),
         ],
@@ -1746,13 +1749,13 @@ class _UtilityNoteRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: _UtilityColors.fieldBg,
+        color: _UtilityColors.fieldBg(context),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: _UtilityColors.border, width: 0.8),
+        border: Border.all(color: _UtilityColors.border(context), width: 0.8),
       ),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14, color: _UtilityColors.placeholder),
+        style: TextStyle(fontSize: 14, color: _UtilityColors.placeholder(context)),
       ),
     );
   }
@@ -1812,10 +1815,10 @@ class _ExpenseTab extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: _UtilityColors.highlightBg,
+                    color: _UtilityColors.highlightBg(context),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: _UtilityColors.border,
+                      color: _UtilityColors.border(context),
                       width: 0.8,
                     ),
                   ),
@@ -1834,9 +1837,9 @@ class _ExpenseTab extends StatelessWidget {
                         (e.description?.isNotEmpty ?? false)
                             ? e.description!
                             : title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: _UtilityColors.darkText,
+                          color: _UtilityColors.darkText(context),
                         ),
                       ),
                     ],
@@ -1967,10 +1970,10 @@ class _MemberDepositTab extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _UtilityColors.fieldBg,
+                    color: _UtilityColors.fieldBg(context),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: _UtilityColors.border,
+                      color: _UtilityColors.border(context),
                       width: 0.8,
                     ),
                   ),
