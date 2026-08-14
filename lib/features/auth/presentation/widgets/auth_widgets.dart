@@ -325,6 +325,7 @@ class _MobileAuthFieldState extends State<MobileAuthField> {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -334,7 +335,7 @@ class _MobileAuthFieldState extends State<MobileAuthField> {
           children: [
             Text(
               widget.label,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+              style: TextStyle(fontSize: 13, color: surface.foreground),
             ),
             if (widget.required) ...[
               const SizedBox(width: 2),
@@ -353,12 +354,12 @@ class _MobileAuthFieldState extends State<MobileAuthField> {
           autofillHints: widget.autofillHints,
           validator: widget.validator,
           textInputAction: widget.textInputAction,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF404040)),
+          style: TextStyle(fontSize: 13, color: surface.foreground),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFFAFAFA),
+            fillColor: surface.card,
             hintText: widget.hint,
-            hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+            hintStyle: TextStyle(fontSize: 13, color: surface.mutedForeground),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
@@ -370,26 +371,26 @@ class _MobileAuthFieldState extends State<MobileAuthField> {
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
                       size: 18,
-                      color: const Color(0xFFAAAAAA),
+                      color: surface.mutedForeground,
                     ),
                     onPressed: () => setState(() => _obscured = !_obscured),
                   )
                 : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+              borderSide: BorderSide(color: surface.border),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFEEEEEE)),
+              borderSide: BorderSide(color: surface.border),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: kAuthTitleColor, width: 1.5),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderSide: BorderSide(color: kAuthTitleColor, width: 1.5),
             ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: CottageColors.destructive),
+            errorBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderSide: BorderSide(color: CottageColors.destructive),
             ),
           ),
         ),
@@ -406,20 +407,21 @@ class MobileOrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    final surface = context.surface;
+    return Row(
       children: [
         Expanded(
-          child: Divider(color: Color(0xFFEEEEEE), height: 1, thickness: 1),
+          child: Divider(color: surface.border, height: 1, thickness: 1),
         ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             'Or',
-            style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA)),
+            style: TextStyle(fontSize: 13, color: surface.mutedForeground),
           ),
         ),
         Expanded(
-          child: Divider(color: Color(0xFFEEEEEE), height: 1, thickness: 1),
+          child: Divider(color: surface.border, height: 1, thickness: 1),
         ),
       ],
     );
@@ -448,26 +450,28 @@ class MobileGoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = context.surface;
     return SizedBox(
       height: 48,
       width: double.infinity,
       child: ElevatedButton(
         onPressed: enabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFEEEEEE),
-          disabledBackgroundColor: const Color(0xFFEEEEEE),
+          backgroundColor: surface.card,
+          disabledBackgroundColor: surface.card,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),
+            side: BorderSide(color: surface.border),
           ),
         ),
         child: loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.2,
-                  color: Color(0xFF242424),
+                  color: surface.foreground,
                 ),
               )
             : Row(
@@ -481,7 +485,7 @@ class MobileGoogleButton extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF242424),
+                      color: surface.foreground,
                     ),
                   ),
                 ],

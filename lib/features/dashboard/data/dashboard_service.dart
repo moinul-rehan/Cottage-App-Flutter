@@ -217,7 +217,7 @@ class DashboardService {
   _getMyDue(String cottageId, String monthKey, String userId) async {
     final adjustments = await _client
         .from('utility_adjustments')
-        .select('id, category, amount, created_at')
+        .select('id, category, amount, created_at, related_expense_id')
         .eq('cottage_id', cottageId)
         .eq('month_key', monthKey)
         .eq('user_id', userId)
@@ -234,12 +234,22 @@ class DashboardService {
       } else {
         expenses += amount;
       }
+      // A row linked to `related_expense_id` is the due-credit created when
+      // this member paid that expense out of pocket (see
+      // UtilityService.addExpense's paymentSource == 'member' branch) -- a
+      // separate row from whatever originally assigned this category's
+      // cost, never a mutation of it. The breakdown sheet keeps the
+      // assigned-cost list showing only the real assignment (unchanged) and
+      // renders this credit under "Paid" instead, same shape as an actual
+      // deposit -- see isMemberPaidCredit's doc.
+      final isMemberPaidCredit = row['related_expense_id'] != null;
       adjustmentLines.add(
         AdjustmentLine(
           id: row['id'] as String,
           date: DateTime.parse(row['created_at'] as String),
           label: utilityCategoryLabel(category),
           amount: amount,
+          isMemberPaidCredit: isMemberPaidCredit,
         ),
       );
     }

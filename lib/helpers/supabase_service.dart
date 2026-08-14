@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -138,9 +139,30 @@ class SupabaseService {
 
   static Session? get currentSession => isInitialized ? client.auth.currentSession : null;
 
+  /// Was previously just `client.auth.signOut()` -- the FCM token in
+  /// `fcm_tokens` was never removed, so the backend (src/lib/data/push.ts)
+  /// kept sending this device push notifications for whatever cottage
+  /// events happened after the member had already logged out (e.g. a new
+  /// meal-cost request). Removing the token must happen BEFORE
+  /// `auth.signOut()` -- `fcm_tokens`' RLS policy is `user_id = auth.uid()`
+  /// (see supabase/migrations/0047_fcm_tokens.sql), so once signed out
+  /// there's no longer an authenticated `auth.uid()` to satisfy it and the
+  /// delete would be silently denied.
   static Future<void> signOut() async {
-    if (isInitialized) {
-      await client.auth.signOut();
+    if (!isInitialized) return;
+    await _unregisterFcmToken();
+    await client.auth.signOut();
+  }
+
+  static Future<void> _unregisterFcmToken() async {
+    if (kIsWeb) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await client.from('fcm_tokens').delete().eq('token', token);
+      }
+    } catch (e) {
+      debugPrint('SupabaseService: failed to unregister FCM token on sign-out: $e');
     }
   }
 }

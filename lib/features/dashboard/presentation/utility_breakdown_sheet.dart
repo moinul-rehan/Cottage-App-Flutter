@@ -88,6 +88,12 @@ class _UtilityBreakdownSheetState extends State<_UtilityBreakdownSheet> {
     final surface = context.surface;
     final data = widget.data;
     final due = data.myDue.due;
+    // The cost breakdown list shows only what the cottage actually assigned
+    // -- a member paying that category's bill out of pocket creates a
+    // separate credit row (never a mutation of the assigned one), which
+    // belongs under "Paid" instead, alongside real deposits.
+    final assignedLines = data.myAdjustmentLines.where((l) => !l.isMemberPaidCredit).toList();
+    final creditLines = data.myAdjustmentLines.where((l) => l.isMemberPaidCredit).toList();
 
     return SafeArea(
       child: Container(
@@ -124,7 +130,7 @@ class _UtilityBreakdownSheetState extends State<_UtilityBreakdownSheet> {
                 Divider(color: surface.border),
                 const SizedBox(height: 8),
               ],
-              if (data.myAdjustmentLines.isEmpty)
+              if (assignedLines.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Text('No utility costs yet this month.', style: TextStyle(color: surface.mutedForeground, fontSize: 13)),
@@ -132,7 +138,7 @@ class _UtilityBreakdownSheetState extends State<_UtilityBreakdownSheet> {
               else
                 Column(
                   children: [
-                    for (final line in data.myAdjustmentLines)
+                    for (final line in assignedLines)
                       _LineRow(label: line.label, amount: line.amount, surface: surface),
                   ],
                 ),
@@ -154,6 +160,60 @@ class _UtilityBreakdownSheetState extends State<_UtilityBreakdownSheet> {
                   Text('${data.myDue.paid.toStringAsFixed(2)} tk', style: TextStyle(color: surface.mutedForeground)),
                 ],
               ),
+              if (data.myDepositLines.isNotEmpty || creditLines.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final line in data.myDepositLines)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${_formatShortDate(line.date)}${line.note?.isNotEmpty ?? false ? ' · ${line.note}' : ''}',
+                                  style: TextStyle(color: surface.mutedForeground, fontSize: 12),
+                                ),
+                              ),
+                              Text(
+                                '${line.amount.toStringAsFixed(2)} tk',
+                                style: TextStyle(color: surface.mutedForeground, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // A member paying a category's bill out of their own
+                      // pocket (e.g. the full internet bill) auto-credits
+                      // their deposit -- shown here as its own row, same as
+                      // a real deposit, rather than folded into the cost
+                      // breakdown above (see AdjustmentLine.isMemberPaidCredit).
+                      for (final line in creditLines)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${line.label} paid by you',
+                                  style: TextStyle(color: surface.mutedForeground, fontSize: 12),
+                                ),
+                              ),
+                              Text(
+                                '${line.amount.abs().toStringAsFixed(2)} tk',
+                                style: TextStyle(color: surface.mutedForeground, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -209,6 +269,13 @@ class _UtilityBreakdownSheetState extends State<_UtilityBreakdownSheet> {
     );
   }
 }
+
+const _kMonthAbbrs = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+String _formatShortDate(DateTime date) => '${date.day} ${_kMonthAbbrs[date.month - 1]}';
 
 class _LineRow extends StatelessWidget {
   final String label;

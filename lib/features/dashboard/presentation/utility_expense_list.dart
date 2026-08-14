@@ -96,7 +96,6 @@ class _Row extends StatelessWidget {
         decoration: BoxDecoration(
           color: surface.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: surface.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),

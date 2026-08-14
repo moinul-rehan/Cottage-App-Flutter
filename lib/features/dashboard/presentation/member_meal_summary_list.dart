@@ -349,7 +349,6 @@ class _MemberCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: surface.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: surface.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),

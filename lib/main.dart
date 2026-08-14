@@ -176,7 +176,12 @@ class _AuthGateState extends State<_AuthGate> {
           SupabaseService.passwordRecoveryPending.value = false;
         }
         NavigationService.popToRoot();
-        PushNotificationService.unregisterToken();
+        // FCM token cleanup happens in SupabaseService.signOut() itself,
+        // BEFORE auth.signOut() runs -- doing it here (reactively, after
+        // the auth state already flipped to signed-out) was too late:
+        // fcm_tokens' RLS requires `auth.uid()`, which is already null by
+        // the time this listener fires, so the delete was silently denied
+        // every time and the token just kept receiving pushes post-logout.
       }
     });
   }

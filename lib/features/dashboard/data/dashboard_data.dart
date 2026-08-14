@@ -66,7 +66,23 @@ class AdjustmentLine {
   final String label;
   final double amount;
 
-  const AdjustmentLine({required this.id, required this.date, required this.label, required this.amount});
+  /// True when this row is the due-credit created by the member paying
+  /// that category's expense out of their own pocket (linked via
+  /// `related_expense_id` -- see UtilityService.addExpense's
+  /// paymentSource == 'member' branch), as opposed to a cost actually
+  /// assigned to them by the cottage. Kept as a separate row from whatever
+  /// originally assigned this category's cost -- never a mutation of it --
+  /// so the breakdown sheet can show the assigned amount unchanged and
+  /// list this credit under "Paid" instead.
+  final bool isMemberPaidCredit;
+
+  const AdjustmentLine({
+    required this.id,
+    required this.date,
+    required this.label,
+    required this.amount,
+    this.isMemberPaidCredit = false,
+  });
 }
 
 /// One utility_deposits row (source_type == member) for the current user.

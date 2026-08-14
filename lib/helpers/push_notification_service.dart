@@ -92,20 +92,6 @@ class PushNotificationService {
     );
   }
 
-  /// Best-effort cleanup on sign-out so a shared/reset device stops
-  /// receiving that member's pushes. Not calling this isn't a correctness
-  /// bug (the row just goes stale and gets pruned server-side once FCM
-  /// reports the token invalid), just a courtesy.
-  static Future<void> unregisterToken() async {
-    if (kIsWeb || !_initialized) return;
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) await SupabaseService.client.from('fcm_tokens').delete().eq('token', token);
-    } catch (e) {
-      debugPrint('PushNotificationService: unregisterToken failed: $e');
-    }
-  }
-
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;

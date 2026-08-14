@@ -279,25 +279,30 @@ class _DashboardNavRowState extends State<DashboardNavRow> {
               ),
             ),
             const Spacer(),
-            _Pill(
-              onTap: _showLanguagePicker,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.language, size: 20, color: context.surface.foreground),
-                  const SizedBox(width: 4),
-                  Text(
-                    _selectedLang,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: context.surface.foreground,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
+            // Language picker -- not launching yet (only English is wired
+            // up anywhere in the app), so it's hidden rather than shown as
+            // a dead-looking toggle. Left in place (not deleted) along with
+            // _showLanguagePicker/_selectedLang below so turning it back on
+            // later is just un-commenting this block, no rebuild needed.
+            // _Pill(
+            //   onTap: _showLanguagePicker,
+            //   child: Row(
+            //     mainAxisSize: MainAxisSize.min,
+            //     children: [
+            //       Icon(Icons.language, size: 20, color: context.surface.foreground),
+            //       const SizedBox(width: 4),
+            //       Text(
+            //         _selectedLang,
+            //         style: TextStyle(
+            //           fontSize: 14,
+            //           fontWeight: FontWeight.w600,
+            //           color: context.surface.foreground,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+            // const SizedBox(width: 8),
             const SizedBox(width: 10),
             _IconPill(
               onTap: _toggleTheme,

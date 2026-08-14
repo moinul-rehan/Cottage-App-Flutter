@@ -545,7 +545,10 @@ class _MealScreenState extends State<MealScreen>
   // --- Bazaar Add/Edit Modals ---
 
   void _showAddBazaar(_MealData data) {
-    String? selectedUserId = data.profile.id;
+    // No default selection -- the member must actively pick from the
+    // dropdown rather than the sheet silently pre-picking the viewer, which
+    // made it easy to save a bazar cost under the wrong member's name.
+    String? selectedUserId;
     final amountCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final now = DateTime.now();
@@ -672,7 +675,11 @@ class _MealScreenState extends State<MealScreen>
                 label: 'Save Bazar Cost',
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text) ?? 0;
-                  if (selectedUserId == null || amount <= 0) return;
+                  if (selectedUserId == null) {
+                    showToast(ctx, 'Select a member first.');
+                    return;
+                  }
+                  if (amount <= 0) return;
                   Navigator.pop(ctx);
                   await _mealService.addBazaarEntry(
                     userId: selectedUserId!,
@@ -958,7 +965,10 @@ class _MealScreenState extends State<MealScreen>
   // --- Deposit Add/Edit Modals ---
 
   void _showAddDeposit(_MealData data) {
-    String? selectedUserId = data.profile.id;
+    // No default selection -- same reasoning as _showAddBazaar: a
+    // pre-picked member makes it easy to save a deposit under the wrong
+    // person's name.
+    String? selectedUserId;
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
     final now = DateTime.now();
@@ -1032,7 +1042,11 @@ class _MealScreenState extends State<MealScreen>
                 label: 'Save Deposit',
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text) ?? 0;
-                  if (selectedUserId == null || amount <= 0) return;
+                  if (selectedUserId == null) {
+                    showToast(ctx, 'Select a member first.');
+                    return;
+                  }
+                  if (amount <= 0) return;
                   Navigator.pop(ctx);
                   await _mealService.addMealDeposit(
                     userId: selectedUserId!,

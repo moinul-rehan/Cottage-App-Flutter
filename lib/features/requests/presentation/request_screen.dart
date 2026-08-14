@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cottage/models/profile.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/responsive_utils.dart';
@@ -11,16 +10,17 @@ import '../../dashboard/data/dashboard_service.dart';
 import '../data/request_models.dart';
 import '../data/request_service.dart';
 
-/// "Request" inbox -- takes over the Home tab's neighbouring slot in the
-/// bottom nav for members who can manage meal/bazaar requests (mirrors the
-/// web's MobileBottomNav: Notices tab is swapped for this one when
-/// `canManageMealRequests` is true). Lists every meal/bazaar-cost request a
-/// member has submitted,
-/// with Approve/Reject for whoever can review them (RLS already scopes
-/// `select`/`update` on both tables to reviewers + the requester
-/// themselves, so no extra client-side filtering is needed here). Also
-/// exposes a "New Request" action so a member without can_add_meals/
-/// can_add_bazaar has somewhere to submit one from.
+/// "Requests" -- Figma node 228:1783: three tabs (Meal / Meal Cost /
+/// History) over a "Pending (n)" list of request cards with Approve/Reject.
+/// Takes over the Home tab's neighbouring bottom-nav slot for members who
+/// can manage meal/bazaar requests (mirrors the web's MobileBottomNav:
+/// Notices tab is swapped for this one when `canManageMealRequests` is
+/// true). RLS already scopes select/update on both request tables to
+/// reviewers + the requester themselves, so no extra client-side filtering
+/// is needed. Also exposes a "New Request" action so a member without
+/// can_add_meals/can_add_bazaar has somewhere to submit one from. Page
+/// shell copies _DynamicDefaultCostHeaderDelegate's collapsing-title
+/// mechanics.
 class RequestScreen extends StatefulWidget {
   static final requestScreenKey = GlobalKey<_RequestScreenState>();
 
@@ -41,30 +41,16 @@ class _RequestData {
   });
 }
 
-class _RequestScreenState extends State<RequestScreen>
-    with SingleTickerProviderStateMixin {
+class _RequestScreenState extends State<RequestScreen> {
   final _requestService = RequestService();
   final _dashService = DashboardService();
   late Future<_RequestData> _future;
-  late TabController _tabController;
   int _activeTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() => _activeTabIndex = _tabController.index);
-      }
-    });
     _future = _load();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<_RequestData> _load() async {
@@ -318,13 +304,13 @@ class _RequestScreenState extends State<RequestScreen>
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
-            backgroundColor: CottageColors.primary,
+            backgroundColor: Color(0xFFDE7356),
             body: Center(child: CottageLoader()),
           );
         }
         if (snapshot.hasError) {
           return Scaffold(
-            backgroundColor: CottageColors.primary,
+            backgroundColor: const Color(0xFFDE7356),
             body: Center(
               child: Container(
                 padding: const EdgeInsets.all(24),
@@ -377,25 +363,21 @@ class _RequestScreenState extends State<RequestScreen>
             .where((r) => r.status != RequestStatus.pending)
             .toList();
 
-        Widget list({
-          required List<MealRequest> meals,
-          required List<MealCostRequest> costs,
-          required String emptyTitle,
-        }) {
-          if (meals.isEmpty && costs.isEmpty) {
-            return EmptyState(icon: Icons.inbox_outlined, title: emptyTitle);
+        Widget mealTab() {
+          if (pendingMeal.isEmpty) {
+            return const EmptyState(icon: Icons.inbox_outlined, title: 'No pending meal requests.');
           }
           return RefreshIndicator(
             onRefresh: () async => refresh(),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                context.responsivePadding,
-                16,
-                context.responsivePadding,
-                context.bottomNavClearance,
-              ),
+              padding: EdgeInsets.fromLTRB(0, 0, 0, context.bottomNavClearance),
               children: [
-                for (final r in meals)
+                Text(
+                  'Pending (${pendingMeal.length})',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.surface.foreground),
+                ),
+                const SizedBox(height: 10),
+                for (final r in pendingMeal)
                   _MealRequestCard(
                     request: r,
                     formatDate: _formatDate,
@@ -403,7 +385,26 @@ class _RequestScreenState extends State<RequestScreen>
                     onApprove: () => _approveMeal(r, data),
                     onReject: () => _rejectMeal(r, data),
                   ),
-                for (final r in costs)
+              ],
+            ),
+          );
+        }
+
+        Widget costTab() {
+          if (pendingCost.isEmpty) {
+            return const EmptyState(icon: Icons.inbox_outlined, title: 'No pending bazar cost requests.');
+          }
+          return RefreshIndicator(
+            onRefresh: () async => refresh(),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(0, 0, 0, context.bottomNavClearance),
+              children: [
+                Text(
+                  'Pending (${pendingCost.length})',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.surface.foreground),
+                ),
+                const SizedBox(height: 10),
+                for (final r in pendingCost)
                   _CostRequestCard(
                     request: r,
                     formatDate: _formatDate,
@@ -416,8 +417,40 @@ class _RequestScreenState extends State<RequestScreen>
           );
         }
 
+        Widget historyTab() {
+          if (historyMeal.isEmpty && historyCost.isEmpty) {
+            return const EmptyState(icon: Icons.inbox_outlined, title: 'No reviewed requests yet.');
+          }
+          return RefreshIndicator(
+            onRefresh: () async => refresh(),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(0, 0, 0, context.bottomNavClearance),
+              children: [
+                for (final r in historyMeal)
+                  _MealRequestCard(
+                    request: r,
+                    formatDate: _formatDate,
+                    canReview: false,
+                    onApprove: () {},
+                    onReject: () {},
+                  ),
+                for (final r in historyCost)
+                  _CostRequestCard(
+                    request: r,
+                    formatDate: _formatDate,
+                    canReview: false,
+                    onApprove: () {},
+                    onReject: () {},
+                  ),
+              ],
+            ),
+          );
+        }
+
+        final tabs = [mealTab(), costTab(), historyTab()];
+
         return Scaffold(
-          backgroundColor: CottageColors.primary,
+          backgroundColor: const Color(0xFFDE7356),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => _showNewRequest(data),
             backgroundColor: CottageColors.primary,
@@ -427,81 +460,42 @@ class _RequestScreenState extends State<RequestScreen>
               style: TextStyle(color: Colors.white),
             ),
           ),
-          body: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.responsivePadding,
-                    8,
-                    context.responsivePadding,
-                    16,
-                  ),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'Requests',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _DynamicRequestHeaderDelegate(
+                    surface: surface,
+                    safeAreaTop: MediaQuery.of(context).padding.top,
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: surface.card,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
-                      ),
+              ];
+            },
+            body: Container(
+              color: surface.card,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.responsivePadding,
+                      16,
+                      context.responsivePadding,
+                      12,
                     ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            context.responsivePadding,
-                            16,
-                            context.responsivePadding,
-                            0,
-                          ),
-                          child: _RequestTabSwitcher(
-                            activeIndex: _activeTabIndex,
-                            pendingCount:
-                                pendingMeal.length + pendingCost.length,
-                            onTap: (i) => setState(() {
-                              _activeTabIndex = i;
-                              _tabController.animateTo(i);
-                            }),
-                          ),
-                        ),
-                        Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              list(
-                                meals: pendingMeal,
-                                costs: pendingCost,
-                                emptyTitle: 'No pending requests.',
-                              ),
-                              list(
-                                meals: historyMeal,
-                                costs: historyCost,
-                                emptyTitle: 'No reviewed requests yet.',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    child: _RequestTabSwitcher(
+                      activeIndex: _activeTabIndex,
+                      onTap: (i) => setState(() => _activeTabIndex = i),
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: context.responsivePadding),
+                      child: tabs[_activeTabIndex],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -510,37 +504,34 @@ class _RequestScreenState extends State<RequestScreen>
   }
 }
 
+/// Meal / Meal Cost / History pill switcher -- Figma's "Self driver
+/// requirement" frame (230:1791): 3 equal-width chips, selected one filled
+/// orange, unselected ones flat #FAFAFA.
 class _RequestTabSwitcher extends StatelessWidget {
   final int activeIndex;
-  final int pendingCount;
   final ValueChanged<int> onTap;
-  const _RequestTabSwitcher({
-    required this.activeIndex,
-    required this.pendingCount,
-    required this.onTap,
-  });
+  const _RequestTabSwitcher({required this.activeIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final surface = context.surface;
     Widget item(int index, String label) {
       final active = activeIndex == index;
       return Expanded(
         child: GestureDetector(
           onTap: () => onTap(index),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: active ? CottageColors.primary : surface.background,
+              color: active ? const Color(0xFFDE7356) : context.surface.background,
+              border: Border.all(color: context.surface.border),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: active ? Colors.white : surface.foreground,
+                fontSize: 12,
+                color: active ? Colors.white : context.surface.foreground,
               ),
             ),
           ),
@@ -551,15 +542,17 @@ class _RequestTabSwitcher extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3.2),
       decoration: BoxDecoration(
-        color: surface.card,
-        border: Border.all(color: surface.border),
+        color: context.surface.card,
+        border: Border.all(color: context.surface.border),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          item(0, pendingCount > 0 ? 'Pending ($pendingCount)' : 'Pending'),
+          item(0, 'Meal'),
           const SizedBox(width: 3.2),
-          item(1, 'History'),
+          item(1, 'Meal Cost'),
+          const SizedBox(width: 3.2),
+          item(2, 'History'),
         ],
       ),
     );
@@ -584,14 +577,19 @@ class _MealRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _RequestCardShell(
-      icon: Icons.restaurant_menu_rounded,
       title: request.memberName ?? 'Member',
-      subtitle:
-          '${formatDate(request.requestDate)} · Lunch ${request.lunch.toStringAsFixed(1)} · Dinner ${request.dinner.toStringAsFixed(1)}',
+      date: formatDate(request.requestDate),
       status: request.status,
       canReview: canReview,
       onApprove: onApprove,
       onReject: onReject,
+      body: Row(
+        children: [
+          _StatField(label: 'Lunch', value: request.lunch.toStringAsFixed(request.lunch == request.lunch.roundToDouble() ? 0 : 1)),
+          const SizedBox(width: 20),
+          _StatField(label: 'Dinner', value: request.dinner.toStringAsFixed(request.dinner == request.dinner.roundToDouble() ? 0 : 1)),
+        ],
+      ),
     );
   }
 }
@@ -614,32 +612,66 @@ class _CostRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _RequestCardShell(
-      icon: LucideIcons.shoppingBag,
       title: request.memberName ?? 'Member',
-      subtitle:
-          '${formatDate(request.entryDate)} · ৳${request.amount.toStringAsFixed(0)}'
-          '${(request.description?.isNotEmpty ?? false) ? ' · ${request.description}' : ''}',
+      date: formatDate(request.entryDate),
       status: request.status,
       canReview: canReview,
       onApprove: onApprove,
       onReject: onReject,
+      body: Row(
+        children: [
+          _StatField(label: 'Amount', value: '৳${request.amount.toStringAsFixed(0)}'),
+          if (request.description?.isNotEmpty ?? false) ...[
+            const SizedBox(width: 20),
+            Expanded(
+              child: _StatField(label: 'Items', value: request.description!),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
 
+class _StatField extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: context.surface.mutedForeground)),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.surface.foreground),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shared card shell for both request kinds -- Figma's 228:1795 frame:
+/// avatar circle + name + date, a divider, the kind-specific stat row, then
+/// full-width Approve (green)/Reject (white, red border) buttons.
 class _RequestCardShell extends StatelessWidget {
-  final IconData icon;
   final String title;
-  final String subtitle;
+  final String date;
+  final Widget body;
   final RequestStatus status;
   final bool canReview;
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
   const _RequestCardShell({
-    required this.icon,
     required this.title,
-    required this.subtitle,
+    required this.date,
+    required this.body,
     required this.status,
     required this.canReview,
     required this.onApprove,
@@ -648,14 +680,13 @@ class _RequestCardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = context.surface;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: surface.card,
-        border: Border.all(color: surface.border),
-        borderRadius: BorderRadius.circular(12),
+        color: context.surface.background,
+        border: Border.all(color: context.surface.border),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,64 +694,73 @@ class _RequestCardShell extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: surface.accent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: CottageColors.primary),
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(color: context.surface.accent, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: surface.foreground,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: surface.mutedForeground,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.surface.foreground),
                 ),
               ),
-              if (status != RequestStatus.pending) _StatusPill(status: status),
+              if (status == RequestStatus.pending)
+                Text(date, style: TextStyle(fontSize: 11, color: context.surface.mutedForeground))
+              else
+                _StatusPill(status: status),
             ],
           ),
+          const SizedBox(height: 10),
+          Divider(height: 1, color: context.surface.border),
+          const SizedBox(height: 10),
+          body,
           if (status == RequestStatus.pending && canReview) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: onReject,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: surface.border),
-                      foregroundColor: surface.foreground,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                  child: GestureDetector(
+                    onTap: onApprove,
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF63B64E),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check, size: 14, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text('Approve', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                        ],
                       ),
                     ),
-                    child: const Text('Reject'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: onApprove,
-                    child: const Text('Approve'),
+                  child: GestureDetector(
+                    onTap: onReject,
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: const Color(0x66FF4F4F)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.close, size: 14, color: Color(0xFFFF4F4F)),
+                          SizedBox(width: 6),
+                          Text('Reject', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFF4F4F))),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -744,7 +784,7 @@ class _StatusPill extends StatelessWidget {
         ? const Color(0xFF16A34A)
         : rejected
         ? CottageColors.destructive
-        : const Color(0xFF7A818D);
+        : context.surface.mutedForeground;
     final label = approved
         ? 'Approved'
         : rejected
@@ -830,4 +870,75 @@ class _RequestNumberField extends StatelessWidget {
       ],
     );
   }
+}
+
+class _DynamicRequestHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final CottageSurface surface;
+  final double safeAreaTop;
+
+  _DynamicRequestHeaderDelegate({required this.surface, required this.safeAreaTop});
+
+  @override
+  double get minExtent => safeAreaTop + 56.0;
+
+  @override
+  double get maxExtent => safeAreaTop + 88.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: safeAreaTop + 56 - (shrinkOffset * 1.5).clamp(0, safeAreaTop + 56),
+          child: const ColoredBox(color: Color(0xFFDE7356)),
+        ),
+        Positioned(
+          top: (safeAreaTop + 56) * (1 - progress),
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface.card,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20 * (1 - progress)),
+                topRight: Radius.circular(20 * (1 - progress)),
+              ),
+            ),
+          ),
+        ),
+        // Requests is a bottom-nav tab, not a pushed screen -- no back
+        // button, so its title follows the same left inset as every other
+        // tab root (Monthly Details/Meal) uses: `context.responsivePadding`
+        // directly on the text, not the fixed left:4 used by pushed
+        // sub-pages to make room for their back IconButton. A hardcoded
+        // left:4 here happened to look right only on compact screens --
+        // responsivePadding scales to 24/32 on medium/large ones, so the
+        // fixed value drifted out of alignment with Meal's title exactly
+        // the way the user noticed.
+        Positioned(
+          top: safeAreaTop,
+          left: context.responsivePadding,
+          right: context.responsivePadding,
+          child: Text(
+            'Requests',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color.lerp(Colors.white, surface.foreground, progress),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _DynamicRequestHeaderDelegate oldDelegate) => true;
 }

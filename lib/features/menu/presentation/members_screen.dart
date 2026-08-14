@@ -876,48 +876,66 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
               opacity: 1.0 - progress,
               child: IgnorePointer(
                 ignoring: progress > 0.5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Orange Header Content
-                    Container(
-                      height: safeAreaTop + 56,
-                      padding: EdgeInsets.only(
-                        top: safeAreaTop,
-                        left: context.responsivePadding,
-                        right: context.responsivePadding,
-                      ),
-                      child: const Row(
-                        children: [
-                          Text(
-                            'Members',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
+                // This content's natural height (title row + description)
+                // can exceed the Positioned.fill box it's forced into once
+                // a non-super-admin's shorter header (see
+                // `_heightAdjustment`) shrinks toward `minExtent` mid-scroll
+                // -- a plain Column there would throw a RenderFlex overflow
+                // the moment its children ask for more height than the
+                // tight constraint allows. ClipRect+OverflowBox lets the
+                // Column size itself naturally and just clips whatever
+                // doesn't fit, instead of erroring; it's already fading out
+                // by the time that would happen, so nothing visible is lost.
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topLeft,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Orange Header Content
+                        Container(
+                          height: safeAreaTop + 56,
+                          padding: EdgeInsets.only(
+                            top: safeAreaTop,
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
                           ),
-                        ],
-                      ),
-                    ),
-                    // White Card Content (Details)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: context.responsivePadding,
-                        right: context.responsivePadding,
-                        top: 16,
-                      ),
-                      child: Text(
-                        "Everyone sharing this Cottage and their role.",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          fontSize: 14,
-                          color: surface.mutedForeground,
+                          child: const Row(
+                            children: [
+                              Text(
+                                'Members',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        maxLines: 2,
-                      ),
+                        // White Card Content (Details)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: context.responsivePadding,
+                            right: context.responsivePadding,
+                            top: 16,
+                          ),
+                          child: Text(
+                            "Everyone sharing this Cottage and their role.",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              fontSize: 14,
+                              color: surface.mutedForeground,
+                            ),
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

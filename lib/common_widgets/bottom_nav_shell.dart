@@ -189,8 +189,17 @@ class BottomNavShellState extends State<BottomNavShell> {
   /// frame to build (the target screen's State may not exist yet on the
   /// very first switch to it).
   void openTab(int index, {String? action}) {
+    // Index 4 is the Menu tab's own screen -- an intentionally blank
+    // placeholder that only exists to host [MenuScreen.triggerAction] (see
+    // that class's doc comment). It must never actually become the visible
+    // tab: when [action] pushes a screen from it (e.g. Months, Settings)
+    // and the member backs out, whatever's revealed underneath is home
+    // (Dashboard), not that blank page. `case 4` below still fires so the
+    // action itself (owned by MenuScreen) runs -- only the *visible* index
+    // is redirected.
+    final visibleIndex = index == 4 ? 0 : index;
     setState(() {
-      _index = index;
+      _index = visibleIndex;
       _activeSheet = null;
     });
     if (action == null) return;
@@ -482,7 +491,7 @@ class BottomNavShellState extends State<BottomNavShell> {
           fgColor: const Color(0xFF334155),
           onTap: () {
             setState(() {
-              _index = 4;
+              _index = 0;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('settings');
@@ -497,7 +506,7 @@ class BottomNavShellState extends State<BottomNavShell> {
           fgColor: const Color(0xFF075985),
           onTap: () {
             setState(() {
-              _index = 4;
+              _index = 0;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('contacts');
@@ -512,7 +521,7 @@ class BottomNavShellState extends State<BottomNavShell> {
           fgColor: const Color(0xFF6B21A8),
           onTap: () {
             setState(() {
-              _index = 4;
+              _index = 0;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('months');
@@ -527,7 +536,7 @@ class BottomNavShellState extends State<BottomNavShell> {
           fgColor: const Color(0xFF065F46),
           onTap: () {
             setState(() {
-              _index = 4;
+              _index = 0;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('members');
@@ -546,7 +555,7 @@ class BottomNavShellState extends State<BottomNavShell> {
           fgColor: const Color(0xFF9F1239),
           onTap: () {
             setState(() {
-              _index = 4;
+              _index = 0;
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('feedback');
@@ -572,7 +581,23 @@ class BottomNavShellState extends State<BottomNavShell> {
     final surface = context.surface;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Stack(
+    // Home (index 0) is the app's primary tab -- pressing back from any
+    // other tab lands there first instead of exiting straight away; only a
+    // second back press, now from Home, actually closes the app (default
+    // pop behaviour once canPop is true). An open speed dial is treated the
+    // same way a sheet normally is -- back closes it first, rather than
+    // also jumping tabs in the same press.
+    return PopScope(
+      canPop: _index == 0 && _activeSheet == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_activeSheet != null) {
+          setState(() => _activeSheet = null);
+        } else if (_index != 0) {
+          setState(() => _index = 0);
+        }
+      },
+      child: Stack(
       children: [
         Scaffold(
           // Without this, the Scaffold reserves space for the floating nav
@@ -601,6 +626,7 @@ class BottomNavShellState extends State<BottomNavShell> {
         ),
         if (_activeSheet != null) _buildSpeedDialOverlay(screenWidth, surface),
       ],
+      ),
     );
   }
 }

@@ -10,6 +10,9 @@ import 'package:cottage/helpers/supabase_service.dart';
 import '../../dashboard/presentation/verified_badge.dart';
 import 'profile_screen.dart';
 import 'default_cost_screen.dart';
+import 'security_screen.dart';
+import 'ownership_screen.dart';
+import 'cottage_profile_screen.dart';
 
 /// Settings (and anything pushed on top of it, e.g. Profile) is only ever
 /// reached via the Menu tab's speed dial, which leaves the underlying
@@ -34,10 +37,6 @@ class SettingsScreen extends StatelessWidget {
     required this.profile,
     required this.cottageName,
   });
-
-  void _comingSoon(BuildContext context, String label) {
-    showToast(context, '$label coming in a future update');
-  }
 
   /// No manual navigation to LoginScreen here -- the root _AuthGate
   /// (main.dart) listens to onAuthStateChange and swaps to it on its own,
@@ -217,34 +216,58 @@ class SettingsScreen extends StatelessWidget {
                     icon: LucideIcons.house,
                     iconColor: const Color(0xFF5B8DEF),
                     label: 'Cottage Profile',
-                    onTap: () => _comingSoon(context, 'Cottage Profile'),
-                  ),
-                  const SizedBox(height: 12),
-                  _SettingsRow(
-                    icon: LucideIcons.banknote,
-                    iconColor: const Color(0xFF63B64E),
-                    label: 'Default Cost',
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DefaultCostScreen(viewer: profile),
+                        builder: (_) => CottageProfileScreen(viewer: profile),
                       ),
                     ),
                   ),
+                  // Default Cost and Ownership & Control are super-admin-only
+                  // management screens (both already gate their own body
+                  // with an EmptyState if reached some other way) -- a
+                  // general member has nothing to do there, so the row
+                  // itself is hidden rather than leading to a dead end.
+                  if (profile.isSuperAdmin) ...[
+                    const SizedBox(height: 12),
+                    _SettingsRow(
+                      icon: LucideIcons.banknote,
+                      iconColor: const Color(0xFF63B64E),
+                      label: 'Default Cost',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DefaultCostScreen(viewer: profile),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _SettingsRow(
                     icon: LucideIcons.shieldCheck,
                     iconColor: const Color(0xFFFA9033),
                     label: 'Security',
-                    onTap: () => _comingSoon(context, 'Security'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SecurityScreen(viewer: profile),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _SettingsRow(
-                    icon: LucideIcons.crown,
-                    iconColor: CottageColors.destructive,
-                    label: 'Ownership & Control',
-                    onTap: () => _comingSoon(context, 'Ownership & Control'),
-                  ),
+                  if (profile.isSuperAdmin) ...[
+                    const SizedBox(height: 12),
+                    _SettingsRow(
+                      icon: LucideIcons.crown,
+                      iconColor: CottageColors.destructive,
+                      label: 'Ownership & Control',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OwnershipScreen(viewer: profile),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _SettingsRow(
                     icon: LucideIcons.logOut,

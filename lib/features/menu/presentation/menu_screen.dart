@@ -14,12 +14,14 @@ import 'settings_screen.dart';
 /// a page anyone actually sees: tapping this tab immediately pops open the
 /// speed dial (Notice Board / Settings / Contact / Months / Members /
 /// Feedback, see BottomNavShellState._handleTabTap), which is the only way
-/// any of this screen's destinations get reached. It used to render a
-/// placeholder body (cottage logo/name) behind that dial, each rebuild
-/// re-showing a loading spinner while `_load()` re-ran -- there's nothing
-/// worth looking at back there, so it's gone; this widget now just holds
-/// [_currentData] (fetched once, silently, no loading UI) for
-/// [triggerAction] to hand off to whichever screen the dial opens.
+/// any of this screen's destinations get reached. This widget's own body is
+/// never actually shown on screen: [BottomNavShellState.openTab] always
+/// redirects the *visible* tab to Home (index 0) before calling
+/// [triggerAction], specifically so backing out of Settings/Contacts/
+/// Months/Members/Feedback reveals the Dashboard underneath, not a blank
+/// page here -- this class exists purely to hold [_currentData] (fetched
+/// once, silently) for [triggerAction] to hand off to whichever screen the
+/// dial opens, kept alive offstage in the tab IndexedStack.
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
