@@ -146,38 +146,55 @@ class _AuthGate extends StatefulWidget {
 class _AuthGateState extends State<_AuthGate> {
   StreamSubscription<AuthState>? _subscription;
 
-  // Set while the current session only exists because the user tapped a
-  // "reset password" email link (AuthChangeEvent.passwordRecovery). That
-  // session alone would otherwise satisfy the `session != null` check below
-  // and drop them straight into the app without ever letting them choose a
-  // new password -- see [ResetPasswordScreen].
-  bool _passwordRecovery = false;
+  // Mirrors [SupabaseService.passwordRecoveryPending] -- true while the
+  // current session only exists because the user tapped a "reset password"
+  // email link. That session alone would otherwise satisfy the
+  // `session != null` check below and drop them straight into the app
+  // without ever letting them choose a new password -- see
+  // [ResetPasswordScreen]. Seeded from the notifier's *current* value (not
+  // just future changes) because the recovery event itself may already have
+  // fired -- e.g. on a cold start via deep link -- before this widget even
+  // existed to listen for it.
+  late bool _passwordRecovery = SupabaseService.passwordRecoveryPending.value;
 
   @override
   void initState() {
     super.initState();
+    SupabaseService.passwordRecoveryPending.addListener(
+      _onRecoveryPendingChanged,
+    );
     _subscription = SupabaseService.client.auth.onAuthStateChange.listen((
       state,
     ) {
-      if (state.event == AuthChangeEvent.passwordRecovery) {
-        setState(() => _passwordRecovery = true);
-        return;
-      }
+      if (state.event == AuthChangeEvent.passwordRecovery) return;
       if (state.session != null) {
         NavigationService.popToRoot();
         PushNotificationService.registerToken();
       } else if (state.event == AuthChangeEvent.signedOut ||
           state.session == null) {
-        if (_passwordRecovery) setState(() => _passwordRecovery = false);
+        if (_passwordRecovery) {
+          SupabaseService.passwordRecoveryPending.value = false;
+        }
         NavigationService.popToRoot();
         PushNotificationService.unregisterToken();
       }
     });
   }
 
+  void _onRecoveryPendingChanged() {
+    if (mounted) {
+      setState(
+        () => _passwordRecovery = SupabaseService.passwordRecoveryPending.value,
+      );
+    }
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
+    SupabaseService.passwordRecoveryPending.removeListener(
+      _onRecoveryPendingChanged,
+    );
     super.dispose();
   }
 
@@ -196,7 +213,8 @@ class _AuthGateState extends State<_AuthGate> {
 
         if (_passwordRecovery) {
           return ResetPasswordScreen(
-            onCompleted: () => setState(() => _passwordRecovery = false),
+            onCompleted: () =>
+                SupabaseService.passwordRecoveryPending.value = false,
           );
         }
 

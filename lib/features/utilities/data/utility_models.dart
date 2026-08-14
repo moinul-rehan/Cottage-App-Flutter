@@ -46,7 +46,12 @@ class Expense {
 /// A member's utility deposit for a given month.
 class UtilityDeposit {
   final String id;
-  final String userId;
+  // Null for a 'addition' (cottage) deposit -- utility_deposits.user_id is
+  // nullable for that source_type (see UtilityService.addDeposit). Casting
+  // this straight to a non-nullable String used to throw a TypeError the
+  // moment a cottage deposit was in the list, which is why the Cottage
+  // Deposit tab could crash instead of rendering.
+  final String? userId;
   final String cottageId;
   final String monthKey;
   final double amount;
@@ -54,11 +59,16 @@ class UtilityDeposit {
   final String? memberName;
   final String? avatarUrl;
   final String? note;
+  // The user-picked date (utility_deposits.deposit_date) -- distinct from
+  // [createdAt] (the row's insert timestamp). The Member/Cottage Deposit
+  // cards must show this, not createdAt, to match what was actually entered
+  // in the Add Deposit drawer.
+  final String depositDate;
   final DateTime? createdAt;
 
   const UtilityDeposit({
     required this.id,
-    required this.userId,
+    this.userId,
     required this.cottageId,
     required this.monthKey,
     required this.amount,
@@ -66,6 +76,7 @@ class UtilityDeposit {
     this.memberName,
     this.avatarUrl,
     this.note,
+    required this.depositDate,
     this.createdAt,
   });
 
@@ -81,7 +92,7 @@ class UtilityDeposit {
 
     return UtilityDeposit(
       id: map['id'] as String,
-      userId: map['user_id'] as String,
+      userId: map['user_id'] as String?,
       cottageId: map['cottage_id'] as String,
       monthKey: map['month_key'] as String,
       amount: (map['amount'] as num).toDouble(),
@@ -89,6 +100,7 @@ class UtilityDeposit {
       memberName: displayName,
       avatarUrl: profile?['avatar_url'] as String?,
       note: map['note'] as String?,
+      depositDate: map['deposit_date'] as String,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,

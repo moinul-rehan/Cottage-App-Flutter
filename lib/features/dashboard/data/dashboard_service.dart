@@ -127,21 +127,16 @@ class DashboardService {
   }
 
   /// The signed-in member's own profile row -- mirrors getCurrentProfile in
-  /// src/lib/data/dal.ts (a smaller column slice for Phase 1).
+  /// src/lib/data/dal.ts. Always includes the `can_add_*` grant columns:
+  /// this used to select a smaller "Phase 1" column slice without them, but
+  /// [Profile.fromMap] defaults every missing `can_add_*` column to `true`
+  /// (a fallback meant for queries that already filter to active-only
+  /// members server-side, not for hiding real grant columns) -- so any
+  /// screen using that slice showed a plain member as a blue-badged
+  /// "Manager" with full elevated access, regardless of what a super admin
+  /// had actually granted them. Every caller needs the real values, so
+  /// there's no longer a reason to fetch a narrower slice.
   Future<Profile> getCurrentProfile() async {
-    final userId = SupabaseService.currentUser!.id;
-    const cols =
-        'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role';
-    final map = await _ensureAndFetchProfile(userId, cols);
-    return Profile.fromMap(map);
-  }
-
-  /// Same as [getCurrentProfile] but including the `can_add_*` grant
-  /// columns -- needed wherever a screen has to know the signed-in member's
-  /// own permissions (e.g. BottomNavShell deciding whether to show the
-  /// Request inbox tab, or the Meal screen deciding whether an action
-  /// should submit a request instead of writing directly).
-  Future<Profile> getCurrentProfileFull() async {
     final userId = SupabaseService.currentUser!.id;
     const cols =
         'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, '
@@ -149,6 +144,12 @@ class DashboardService {
     final map = await _ensureAndFetchProfile(userId, cols);
     return Profile.fromMap(map);
   }
+
+  /// Kept as an alias of [getCurrentProfile] -- both used to fetch different
+  /// column slices, but that split was itself the source of a permissions
+  /// display bug (see [getCurrentProfile]'s doc comment), so they're now the
+  /// same query.
+  Future<Profile> getCurrentProfileFull() => getCurrentProfile();
 
   /// cottages.active_month_key, falling back to the current calendar month
   /// if unset -- mirrors getActiveMonthKey in src/lib/data/months.ts.

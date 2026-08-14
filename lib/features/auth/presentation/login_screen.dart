@@ -742,9 +742,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    child: Text(
-                      _forgotSubmitting ? 'Sending…' : 'Send reset link',
-                    ),
+                    child: _forgotSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Send reset link'),
                   ),
                 ],
                 const SizedBox(height: 16),

@@ -48,7 +48,7 @@ class DashboardSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _GroupLabel('YOUR MEAL'),
+          _GroupLabel('MY MEAL'),
           const SizedBox(height: 10),
           _SummaryRow(
             icon: Icons.restaurant_outlined,
@@ -71,7 +71,7 @@ class DashboardSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
           Divider(color: surface.border, height: 1),
           const SizedBox(height: 16),
-          _GroupLabel('YOUR UTILITY'),
+          _GroupLabel('MY UTILITY'),
           const SizedBox(height: 10),
           _SummaryRow(
             icon: Icons.receipt_long_outlined,

@@ -233,6 +233,7 @@ class _BazaarDutySection extends StatelessWidget {
       cottageId: profile.cottageId,
       membersById: data.membersById,
       currentUserId: profile.id,
+      isSuperAdmin: profile.isSuperAdmin,
     );
   }
 }

@@ -94,12 +94,19 @@ class BazaarDutyRoster extends StatelessWidget {
   final String currentUserId;
   final String cottageId;
 
+  /// Only a super admin can reassign bazaar duties (from the Members
+  /// screen), so the "Edit" link is only shown for them -- an ordinary
+  /// member tapping it would just land on a screen with nothing they're
+  /// allowed to do.
+  final bool isSuperAdmin;
+
   const BazaarDutyRoster({
     super.key,
     required this.duties,
     required this.membersById,
     required this.currentUserId,
     required this.cottageId,
+    required this.isSuperAdmin,
   });
 
   /// One row per member instead of one per duty row -- [duties] holds every
@@ -191,17 +198,18 @@ class BazaarDutyRoster extends StatelessWidget {
                 'Bazar Duty Roster',
                 style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: surface.foreground),
               ),
-              GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MembersScreen(cottageId: cottageId),
+              if (isSuperAdmin)
+                GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MembersScreen(cottageId: cottageId),
+                    ),
+                  ),
+                  child: Text(
+                    'Edit',
+                    style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF7238BD)),
                   ),
                 ),
-                child: Text(
-                  'Edit',
-                  style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF7238BD)),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 14),

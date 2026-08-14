@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../data/meal_models.dart';
 import '../data/meal_service.dart';
 import 'package:cottage/models/profile.dart';
 import '../../dashboard/data/dashboard_service.dart';
 import '../../menu/data/member_service.dart';
+import '../../requests/data/request_service.dart';
 import 'package:cottage/constants/theme.dart';
 import 'package:cottage/common_widgets/cottage_bottom_sheet.dart';
 import 'package:cottage/common_widgets/empty_state.dart';
@@ -27,6 +29,7 @@ class _MealScreenState extends State<MealScreen>
   final _mealService = MealService();
   final _dashService = DashboardService();
   final _memberService = MemberService();
+  final _requestService = RequestService();
 
   _MealData? _currentData;
 
@@ -35,8 +38,12 @@ class _MealScreenState extends State<MealScreen>
     if (data == null) return;
     if (action == 'add-meal') {
       _showAddMeal(data);
+    } else if (action == 'request-meal') {
+      _showRequestMeal(data);
     } else if (action == 'add-bazaar') {
       _showAddBazaar(data);
+    } else if (action == 'request-cost') {
+      _showRequestMealCost(data);
     } else if (action == 'add-deposit') {
       _showAddDeposit(data);
     }
@@ -99,6 +106,52 @@ class _MealScreenState extends State<MealScreen>
   }
 
   void _refresh() => setState(() => _future = _load());
+
+  /// Shares a plain-text summary of whichever tab is currently active --
+  /// same rationale/pattern as UtilityStatementScreen/UtilitiesScreen's
+  /// _download (no PDF pipeline in this app yet, so a text export is the
+  /// closest faithful stand-in for a real "download" action).
+  void _download(_MealData data) {
+    final monthLabel = _formatMonth(data.monthKey);
+    final buffer = StringBuffer();
+    switch (_activeTabIndex) {
+      case 0:
+        buffer.writeln('Meal Details -- $monthLabel\n');
+        if (data.meals.isEmpty) buffer.writeln('No meal entries yet.');
+        final byDate = <String, List<DailyMeal>>{};
+        for (final m in data.meals) {
+          (byDate[m.date] ??= []).add(m);
+        }
+        for (final date in byDate.keys.toList()..sort((a, b) => b.compareTo(a))) {
+          buffer.writeln(date);
+          for (final m in byDate[date]!) {
+            buffer.writeln('  ${m.memberName ?? 'Member'}: ${m.count}');
+          }
+          buffer.writeln();
+        }
+        break;
+      case 1:
+        buffer.writeln('Bazar Entries -- $monthLabel\n');
+        if (data.bazaar.isEmpty) buffer.writeln('No bazaar entries yet.');
+        for (final e in data.bazaar) {
+          buffer.writeln('${e.date}  ${e.memberName ?? 'Member'}');
+          if (e.description?.isNotEmpty ?? false) {
+            buffer.writeln('  ${e.description}');
+          }
+          buffer.writeln('  Amount: ${e.amount.toStringAsFixed(2)} tk\n');
+        }
+        break;
+      default:
+        buffer.writeln('Meal Deposits -- $monthLabel\n');
+        if (data.deposits.isEmpty) buffer.writeln('No meal deposits yet.');
+        for (final d in data.deposits) {
+          buffer.writeln('${d.date}  ${d.memberName ?? 'Member'}');
+          if (d.note?.isNotEmpty ?? false) buffer.writeln('  ${d.note}');
+          buffer.writeln('  Amount: ${d.amount.toStringAsFixed(2)} tk\n');
+        }
+    }
+    Share.share(buffer.toString(), subject: 'Monthly Details - $monthLabel');
+  }
 
   String _formatMonth(String monthKey) {
     try {
@@ -289,6 +342,101 @@ class _MealScreenState extends State<MealScreen>
           ),
         );
         },
+      ),
+    );
+  }
+
+  /// A member without `can_add_meals` can't write `daily_meals` directly --
+  /// this submits a `meal_requests` row instead, for a manager/super admin
+  /// to review from the Requests tab. Mirrors RequestMealForm.tsx: only
+  /// today-or-later dates are allowed (unlike [_showAddMeal], which edits
+  /// the past freely), since it doesn't make sense to *request* approval for
+  /// a meal that's already been served.
+  void _showRequestMeal(_MealData data) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    String selectedDate = _isoDate(today);
+    final lunchCtrl = TextEditingController(text: '0');
+    final dinnerCtrl = TextEditingController(text: '0');
+
+    showCottageSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DrawerHeader(
+                icon: Icons.send_outlined,
+                title: 'Request Meal',
+                onClose: () => Navigator.pop(ctx),
+              ),
+              const SizedBox(height: 16),
+              _DrawerDateField(
+                label: 'Date',
+                date: _formatDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: DateTime.tryParse(selectedDate) ?? today,
+                    firstDate: today,
+                    lastDate: DateTime(today.year, today.month + 3, today.day),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => selectedDate = _isoDate(picked));
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DrawerTextField(
+                      label: 'Lunch',
+                      controller: lunchCtrl,
+                      hint: '0',
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DrawerTextField(
+                      label: 'Dinner',
+                      controller: dinnerCtrl,
+                      hint: '0',
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _DrawerSaveButton(
+                label: 'Submit Request',
+                onPressed: () async {
+                  final lunch = double.tryParse(lunchCtrl.text) ?? 0;
+                  final dinner = double.tryParse(dinnerCtrl.text) ?? 0;
+                  Navigator.pop(ctx);
+                  await _requestService.createMealRequest(
+                    cottageId: data.profile.cottageId,
+                    userId: data.profile.id,
+                    requestDate: selectedDate,
+                    lunch: lunch,
+                    dinner: dinner,
+                  );
+                  if (mounted) {
+                    showToast(context, 'Meal request submitted for review.');
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -531,6 +679,101 @@ class _MealScreenState extends State<MealScreen>
                     creditDeposit: creditDeposit,
                   );
                   _refresh();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A member without `can_add_bazaar` can't write `bazaar_entries` directly
+  /// -- this submits a `meal_cost_requests` row instead, for a
+  /// manager/super admin to review. Mirrors RequestMealCostForm.tsx.
+  void _showRequestMealCost(_MealData data) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    String selectedDate = _isoDate(today);
+    final amountCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+
+    showCottageSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DrawerHeader(
+                icon: Icons.send_outlined,
+                title: 'Request Meal Cost',
+                onClose: () => Navigator.pop(ctx),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Once approved, this amount is credited straight to your meal deposit.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ctx.surface.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _DrawerDateField(
+                label: 'Date',
+                date: _formatDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: DateTime.tryParse(selectedDate) ?? today,
+                    firstDate: DateTime(today.year, today.month, 1),
+                    lastDate: today,
+                  );
+                  if (picked != null) {
+                    setSheetState(() => selectedDate = _isoDate(picked));
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Amount',
+                controller: amountCtrl,
+                hint: '0.00',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                prefixText: '৳',
+              ),
+              const SizedBox(height: 16),
+              _DrawerTextField(
+                label: 'Description',
+                controller: descCtrl,
+                hint: 'What did you buy?',
+                maxLines: 3,
+                required: false,
+              ),
+              const SizedBox(height: 16),
+              _DrawerSaveButton(
+                label: 'Submit Request',
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text) ?? 0;
+                  if (amount <= 0) return;
+                  Navigator.pop(ctx);
+                  await _requestService.createMealCostRequest(
+                    cottageId: data.profile.cottageId,
+                    userId: data.profile.id,
+                    entryDate: selectedDate,
+                    amount: amount,
+                    description: descCtrl.text.trim(),
+                  );
+                  if (mounted) {
+                    showToast(
+                      context,
+                      'Meal cost request submitted for review.',
+                    );
+                  }
                 },
               ),
             ],
@@ -907,6 +1150,100 @@ class _MealScreenState extends State<MealScreen>
     );
   }
 
+  /// The card-level trash icon (Figma: pencil + trash sit side by side on
+  /// every Bazar/Deposit card, not just buried inside the edit sheet's own
+  /// "Delete" button) -- both call the same [MealService.deleteBazaarEntry]
+  /// already used there.
+  /// Deletes every member's meal count for [date] in one go -- the Meal
+  /// Details card's unit is a whole day, not one member, so its delete icon
+  /// mirrors web's DeleteMealRowButton.tsx wording and semantics exactly
+  /// rather than the per-row delete the Bazar/Deposit cards use.
+  void _confirmDeleteMealDay(_MealData data, String date) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete this day's meals?"),
+        content: Text(
+          "Removes every member's meal count for ${_formatDate(date)}. This can't be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _mealService.deleteDailyMealsForDate(
+                monthKey: data.monthKey,
+                date: date,
+              );
+              _refresh();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: CottageColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteBazaar(BazaarEntry entry) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this bazaar entry?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _mealService.deleteBazaarEntry(entry.id);
+              _refresh();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: CottageColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteDeposit(MealDeposit entry) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this meal deposit?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _mealService.deleteMealDeposit(entry.id);
+              _refresh();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: CottageColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- Segmented TabBar widgets ---
 
   Widget _buildTabBar(CottageSurface surface) {
@@ -1057,12 +1394,7 @@ class _MealScreenState extends State<MealScreen>
                     surface: surface,
                     tabBar: _buildTabBar(surface),
                     monthText: _formatMonth(data.monthKey),
-                    onDownload: () {
-                      showToast(
-                        context,
-                        'Summary report downloaded successfully',
-                      );
-                    },
+                    onDownload: () => _download(data),
                     safeAreaTop: MediaQuery.of(context).padding.top,
                   ),
                 ),
@@ -1084,17 +1416,20 @@ class _MealScreenState extends State<MealScreen>
                       data.monthKey,
                       data.profile.id,
                     ),
+                    onDeleteDay: (date) => _confirmDeleteMealDay(data, date),
                   ),
                   _BazaarTab(
                     data: data,
                     onRefresh: _refresh,
                     onEditBazaar: _showEditBazaar,
                     onShowInfo: _showBazaarInfo,
+                    onDeleteBazaar: _confirmDeleteBazaar,
                   ),
                   _DepositTab(
                     data: data,
                     onRefresh: _refresh,
                     onEditDeposit: _showEditDeposit,
+                    onDeleteDeposit: _confirmDeleteDeposit,
                   ),
                 ],
               ),
@@ -1136,10 +1471,12 @@ class _DailyMealsTab extends StatelessWidget {
   final _MealData data;
   final VoidCallback onRefresh;
   final Function(String, List<DailyMeal>) onEditMeal;
+  final Function(String) onDeleteDay;
 
   const _DailyMealsTab({
     required this.data,
     required this.onRefresh,
+    required this.onDeleteDay,
     required this.onEditMeal,
   });
 
@@ -1225,7 +1562,7 @@ class _DailyMealsTab extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           color: surface.background,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: surface.border, width: 0.8),
                         ),
                         alignment: Alignment.centerLeft,
@@ -1251,10 +1588,45 @@ class _DailyMealsTab extends StatelessWidget {
                       style: IconButton.styleFrom(
                         backgroundColor: surface.background,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           side: BorderSide(color: surface.border, width: 0.8),
                         ),
                         fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => onDeleteDay(date),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: CottageColors.destructive,
+                        size: 18,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: surface.background,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          side: BorderSide(color: surface.border, width: 0.8),
+                        ),
+                        fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ],
@@ -1341,12 +1713,14 @@ class _BazaarTab extends StatelessWidget {
   final VoidCallback onRefresh;
   final Function(BazaarEntry) onEditBazaar;
   final Function(BazaarEntry) onShowInfo;
+  final Function(BazaarEntry) onDeleteBazaar;
 
   const _BazaarTab({
     required this.data,
     required this.onRefresh,
     required this.onEditBazaar,
     required this.onShowInfo,
+    required this.onDeleteBazaar,
   });
 
   String _formatDate(String dateStr) {
@@ -1408,7 +1782,7 @@ class _BazaarTab extends StatelessWidget {
             padding: const EdgeInsets.all(4), // 4px padding for outer card
             decoration: BoxDecoration(
               color: surface.card,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: surface.border, width: 0.8),
             ),
             child: Column(
@@ -1423,7 +1797,7 @@ class _BazaarTab extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           color: surface.background,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: surface.border, width: 0.8),
                         ),
                         alignment: Alignment.centerLeft,
@@ -1450,13 +1824,22 @@ class _BazaarTab extends StatelessWidget {
                           style: IconButton.styleFrom(
                             backgroundColor: surface.background,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(4),
                               side: BorderSide(
                                 color: surface.border,
                                 width: 0.8,
                               ),
                             ),
                             fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -1470,13 +1853,51 @@ class _BazaarTab extends StatelessWidget {
                           style: IconButton.styleFrom(
                             backgroundColor: surface.background,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(4),
                               side: BorderSide(
                                 color: surface.border,
                                 width: 0.8,
                               ),
                             ),
                             fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: () => onDeleteBazaar(entry),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: CottageColors.destructive,
+                            size: 18,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: surface.background,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              side: BorderSide(
+                                color: surface.border,
+                                width: 0.8,
+                              ),
+                            ),
+                            fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ),
                       ],
@@ -1496,7 +1917,7 @@ class _BazaarTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: surface.background,
                         border: Border.all(color: surface.border, width: 0.8),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1521,7 +1942,7 @@ class _BazaarTab extends StatelessWidget {
                                   )
                                 : null,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Text(
                             entry.memberName ?? 'Member',
                             style: const TextStyle(
@@ -1558,7 +1979,7 @@ class _BazaarTab extends StatelessWidget {
                                     color: surface.border,
                                     width: 0.8,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                                 alignment: Alignment.centerLeft,
                                 child: Text(
@@ -1588,7 +2009,7 @@ class _BazaarTab extends StatelessWidget {
                                   color: surface.border,
                                   width: 0.8,
                                 ),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: Row(
                                 children: [
@@ -1600,7 +2021,7 @@ class _BazaarTab extends StatelessWidget {
                                       color: CottageColors.primary,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 4),
                                   Expanded(
                                     child: Container(
                                       height: 21,
@@ -1614,7 +2035,7 @@ class _BazaarTab extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 4),
                                   Text(
                                     '${entry.amount.toStringAsFixed(0)} tk',
                                     style: TextStyle(
@@ -1647,11 +2068,13 @@ class _DepositTab extends StatelessWidget {
   final _MealData data;
   final VoidCallback onRefresh;
   final Function(MealDeposit) onEditDeposit;
+  final Function(MealDeposit) onDeleteDeposit;
 
   const _DepositTab({
     required this.data,
     required this.onRefresh,
     required this.onEditDeposit,
+    required this.onDeleteDeposit,
   });
 
   String _formatDate(String dateStr) {
@@ -1711,7 +2134,7 @@ class _DepositTab extends StatelessWidget {
             padding: const EdgeInsets.all(4), // 4px padding for outer card
             decoration: BoxDecoration(
               color: surface.card,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: surface.border, width: 0.8),
             ),
             child: Column(
@@ -1726,7 +2149,7 @@ class _DepositTab extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
                           color: surface.background,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: surface.border, width: 0.8),
                         ),
                         alignment: Alignment.centerLeft,
@@ -1751,10 +2174,45 @@ class _DepositTab extends StatelessWidget {
                       style: IconButton.styleFrom(
                         backgroundColor: surface.background,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(4),
                           side: BorderSide(color: surface.border, width: 0.8),
                         ),
                         fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => onDeleteDeposit(entry),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: CottageColors.destructive,
+                        size: 18,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: surface.background,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          side: BorderSide(color: surface.border, width: 0.8),
+                        ),
+                        fixedSize: const Size(38, 38),
+                        // Without this, IconButton still reserves Material's
+                        // default 48dp minimum tap-target height as invisible
+                        // padding around the visually-smaller 38x38 box
+                        // (fixedSize alone only caps the visual box, not the
+                        // tap target) -- that inflated the header Row's real
+                        // height, throwing off the card's top-padding vs.
+                        // row-to-content gaps even though both are coded as
+                        // the same 4px.
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ],
@@ -1772,7 +2230,7 @@ class _DepositTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: surface.background,
                         border: Border.all(color: surface.border, width: 0.8),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1797,7 +2255,7 @@ class _DepositTab extends StatelessWidget {
                                   )
                                 : null,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Text(
                             entry.memberName ?? 'Member',
                             style: const TextStyle(
@@ -1833,7 +2291,7 @@ class _DepositTab extends StatelessWidget {
                                     color: surface.border,
                                     width: 0.8,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                                 alignment: Alignment.centerLeft,
                                 child: Text(
@@ -1862,7 +2320,7 @@ class _DepositTab extends StatelessWidget {
                                   color: surface.border,
                                   width: 0.8,
                                 ),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: Row(
                                 children: [
@@ -1874,7 +2332,7 @@ class _DepositTab extends StatelessWidget {
                                       color: CottageColors.primary,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 4),
                                   Expanded(
                                     child: Container(
                                       height: 21,
@@ -1888,7 +2346,7 @@ class _DepositTab extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 4),
                                   Text(
                                     '${entry.amount.toStringAsFixed(0)} tk',
                                     style: TextStyle(

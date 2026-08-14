@@ -1,6 +1,7 @@
 import 'package:cottage/models/profile.dart';
 import 'utility_models.dart';
 import 'package:cottage/helpers/supabase_service.dart';
+import 'package:cottage/helpers/utility_categories.dart';
 
 /// Data layer for the Utilities tab — expenses, deposits, and member dues.
 class UtilityService {
@@ -104,6 +105,86 @@ class UtilityService {
         'created_by': createdBy,
       });
     }
+  }
+
+  /// Edits an existing expense in place -- mirrors `updateExpense` in
+  /// src/app/(house)/utilities/actions.ts. Any linked
+  /// `cottage_balance_transactions`/`utility_adjustments` row (written by
+  /// [addExpense] for the 'cottage_balance'/'member' payment sources) is
+  /// kept in sync the same way the web action does; if this expense's
+  /// payment source never created one of those rows (e.g. 'none'), the
+  /// matching `.update()` here just affects zero rows, which Supabase
+  /// doesn't treat as an error.
+  Future<void> updateExpense({
+    required String id,
+    required String category,
+    required double amount,
+    String? description,
+    required String expenseDate,
+  }) async {
+    await _client
+        .from('expenses')
+        .update({
+          'category': category,
+          'amount': amount,
+          'description': description,
+          'expense_date': expenseDate,
+        })
+        .eq('id', id);
+
+    await _client
+        .from('cottage_balance_transactions')
+        .update({
+          'amount': amount,
+          'reason': description ?? utilityCategoryLabel(category),
+        })
+        .eq('related_expense_id', id);
+
+    await _client
+        .from('utility_adjustments')
+        .update({'amount': -amount, 'category': category})
+        .eq('related_expense_id', id);
+  }
+
+  /// Deletes an expense; migration 0051_editable_utility_records.sql put
+  /// `ON DELETE CASCADE` on both `cottage_balance_transactions
+  /// .related_expense_id` and `utility_adjustments.related_expense_id`, so
+  /// the linked balance transaction or member due-credit (if either exists
+  /// for this expense) is removed automatically -- mirrors `deleteExpense`.
+  Future<void> deleteExpense(String id) async {
+    await _client.from('expenses').delete().eq('id', id);
+  }
+
+  /// Edits an existing deposit (member or cottage) in place -- mirrors
+  /// `updateMemberUtilityDeposit`/`updateCottageDeposit`.
+  Future<void> updateDeposit({
+    required String id,
+    required double amount,
+    required String depositDate,
+    String? note,
+    required String defaultReason,
+  }) async {
+    await _client
+        .from('utility_deposits')
+        .update({
+          'amount': amount,
+          'deposit_date': depositDate,
+          'note': note,
+        })
+        .eq('id', id);
+
+    await _client
+        .from('cottage_balance_transactions')
+        .update({'amount': amount, 'reason': note ?? defaultReason})
+        .eq('related_deposit_id', id);
+  }
+
+  /// Deletes a deposit (member or cottage); the linked
+  /// `cottage_balance_transactions` row cascades away automatically (see
+  /// [deleteExpense]'s doc comment) -- mirrors
+  /// `deleteMemberUtilityDeposit`/`deleteCottageDeposit`.
+  Future<void> deleteDeposit(String id) async {
+    await _client.from('utility_deposits').delete().eq('id', id);
   }
 
   /// Fetch all utility deposits for the given month, with member names.

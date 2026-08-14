@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:cottage/models/profile.dart';
 import '../data/utility_models.dart';
 import '../../dashboard/data/dashboard_service.dart';
@@ -398,6 +399,242 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
     );
   }
 
+  /// Category + description + date + amount -- same fields as
+  /// [_showAddExpense] minus Payment Source, which `updateExpense` never
+  /// touches (mirrors EditExpenseDialog.tsx exactly).
+  void _showEditExpense(Expense expense) {
+    final knownCategory =
+        expense.category != null &&
+        utilityCategoryLabels.containsKey(expense.category) &&
+        expense.category != 'other';
+    String category = knownCategory ? expense.category! : 'other';
+    final customCategoryCtrl = TextEditingController(
+      text: knownCategory ? '' : (expense.category ?? ''),
+    );
+    final descCtrl = TextEditingController(text: expense.description ?? '');
+    final amountCtrl = TextEditingController(
+      text: expense.amount.toStringAsFixed(2),
+    );
+    DateTime selectedDate =
+        DateTime.tryParse(expense.expenseDate) ?? DateTime.now();
+
+    showCottageSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => _UtilityDrawer(
+          icon: Icons.edit_outlined,
+          title: 'Edit Expense',
+          children: [
+            _DrawerField(
+              label: 'Category',
+              child: _DrawerTapField(
+                value: utilityCategoryLabels[category]!,
+                onTap: () async {
+                  final picked = await _pickCategory(ctx);
+                  if (picked != null) {
+                    setSheetState(() => category = picked);
+                  }
+                },
+              ),
+            ),
+            if (category == 'other')
+              _DrawerField(
+                label: 'Custom Category Name',
+                child: _DrawerTextField(
+                  controller: customCategoryCtrl,
+                  hint: 'e.g. Gas cylinder',
+                ),
+              ),
+            _DrawerField(
+              label: 'Date',
+              child: _DrawerTapField(
+                value: _drawerDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(selectedDate.year - 1),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => selectedDate = picked);
+                  }
+                },
+              ),
+            ),
+            _DrawerField(
+              label: 'Description',
+              child: _DrawerTextField(
+                controller: descCtrl,
+                hint: 'July electricity bill payment',
+              ),
+            ),
+            _DrawerField(
+              label: 'Total Amount',
+              child: _DrawerAmountField(controller: amountCtrl),
+            ),
+            _DrawerSaveButton(
+              label: 'Save Changes',
+              onTap: () async {
+                final amount = double.tryParse(amountCtrl.text) ?? 0;
+                final resolvedCategory = category == 'other'
+                    ? customCategoryCtrl.text.trim()
+                    : category;
+                if (amount <= 0 || resolvedCategory.isEmpty) {
+                  showToast(ctx, 'Please fill in all required fields.');
+                  return;
+                }
+                Navigator.pop(ctx);
+                await _utilityService.updateExpense(
+                  id: expense.id,
+                  category: resolvedCategory,
+                  amount: amount,
+                  description: descCtrl.text.trim(),
+                  expenseDate: _isoDate(selectedDate),
+                );
+                _refresh();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteExpense(Expense expense) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this expense?'),
+        content: const Text(
+          'This also removes any linked Cottage Balance transaction or member due-credit. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _utilityService.deleteExpense(expense.id);
+              _refresh();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: CottageColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Amount + date + note -- same shape for both the Member and Cottage
+  /// Deposit tabs (mirrors EditMemberDepositDialog.tsx /
+  /// EditCottageDepositDialog.tsx, which are identical besides their
+  /// default reason text).
+  void _showEditDeposit(UtilityDeposit deposit) {
+    final amountCtrl = TextEditingController(
+      text: deposit.amount.toStringAsFixed(2),
+    );
+    final noteCtrl = TextEditingController(text: deposit.note ?? '');
+    DateTime selectedDate =
+        DateTime.tryParse(deposit.depositDate) ?? DateTime.now();
+    final defaultReason = deposit.isMemberDeposit
+        ? 'Member Utility Deposit'
+        : 'Cottage Deposit';
+
+    showCottageSheet(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => _UtilityDrawer(
+          icon: Icons.edit_outlined,
+          title: deposit.isMemberDeposit
+              ? 'Edit Member Deposit'
+              : 'Edit Cottage Deposit',
+          children: [
+            _DrawerField(
+              label: 'Date',
+              child: _DrawerTapField(
+                value: _drawerDate(selectedDate),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(selectedDate.year - 1),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => selectedDate = picked);
+                  }
+                },
+              ),
+            ),
+            _DrawerField(
+              label: 'Note',
+              child: _DrawerTextField(controller: noteCtrl, hint: 'Optional'),
+            ),
+            _DrawerField(
+              label: 'Total Amount',
+              child: _DrawerAmountField(controller: amountCtrl),
+            ),
+            _DrawerSaveButton(
+              label: 'Save Changes',
+              onTap: () async {
+                final amount = double.tryParse(amountCtrl.text) ?? 0;
+                if (amount <= 0) {
+                  showToast(ctx, 'Enter a valid amount.');
+                  return;
+                }
+                Navigator.pop(ctx);
+                await _utilityService.updateDeposit(
+                  id: deposit.id,
+                  amount: amount,
+                  depositDate: _isoDate(selectedDate),
+                  note: noteCtrl.text.trim(),
+                  defaultReason: defaultReason,
+                );
+                _refresh();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteDeposit(UtilityDeposit deposit) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Delete this ${deposit.isMemberDeposit ? 'member' : 'cottage'} deposit?',
+        ),
+        content: const Text(
+          'This also removes the linked Cottage Balance transaction. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _utilityService.deleteDeposit(deposit.id);
+              _refresh();
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: CottageColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<Profile?> _pickMember(BuildContext context, List<Profile> members) {
     return showModalBottomSheet<Profile>(
       context: context,
@@ -445,6 +682,72 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
         ),
       ),
     );
+  }
+
+  /// Mirrors the web's payment_source display: 'cottage_balance' -> "Cottage
+  /// Balance", 'member' -> "Member - {name}", everything else (including
+  /// null/'none') -> "None". [_ExpenseTab] used to just show the raw DB
+  /// literal (e.g. "cottage_balance") verbatim.
+  static String _paymentSourceLabel(Expense e) {
+    switch (e.paymentSource) {
+      case 'cottage_balance':
+        return 'Cottage Balance';
+      case 'member':
+        return 'Member${e.payerName != null ? ' - ${e.payerName}' : ''}';
+      default:
+        return 'None';
+    }
+  }
+
+  /// Shares a plain-text summary of whichever tab is currently active --
+  /// same rationale/pattern as UtilityStatementScreen._download (no PDF
+  /// pipeline in this app yet, so a text export is the closest faithful
+  /// port of the web's `/utilities/history/pdf` download).
+  void _download(_UtilityData data) {
+    final monthLabel = _formatMonth(data.monthKey);
+    final buffer = StringBuffer();
+    switch (_activeTabIndex) {
+      case 0:
+        buffer.writeln('Utility Expenses -- $monthLabel\n');
+        if (data.expenses.isEmpty) buffer.writeln('No utility expenses yet.');
+        for (final e in data.expenses) {
+          buffer.writeln(
+            '${e.expenseDate}  ${utilityCategoryLabel(e.category ?? 'other')}',
+          );
+          if (e.description?.isNotEmpty ?? false) {
+            buffer.writeln('  ${e.description}');
+          }
+          buffer.writeln('  Payment Source: ${_paymentSourceLabel(e)}');
+          buffer.writeln('  Amount: ${e.amount.toStringAsFixed(2)} tk\n');
+        }
+        break;
+      case 1:
+        final memberDeposits = data.deposits
+            .where((d) => d.isMemberDeposit)
+            .toList();
+        buffer.writeln('Member Utility Deposits -- $monthLabel\n');
+        if (memberDeposits.isEmpty) {
+          buffer.writeln('No Member Utility Deposits yet.');
+        }
+        for (final d in memberDeposits) {
+          buffer.writeln('${d.depositDate}  ${d.memberName ?? 'Member'}');
+          if (d.note?.isNotEmpty ?? false) buffer.writeln('  ${d.note}');
+          buffer.writeln('  Amount: ${d.amount.toStringAsFixed(2)} tk\n');
+        }
+        break;
+      default:
+        final cottageDeposits = data.deposits
+            .where((d) => !d.isMemberDeposit)
+            .toList();
+        buffer.writeln('Cottage Deposits -- $monthLabel\n');
+        if (cottageDeposits.isEmpty) buffer.writeln('No Cottage Deposits yet.');
+        for (final d in cottageDeposits) {
+          buffer.writeln(d.depositDate);
+          if (d.note?.isNotEmpty ?? false) buffer.writeln('  ${d.note}');
+          buffer.writeln('  Amount: ${d.amount.toStringAsFixed(2)} tk\n');
+        }
+    }
+    Share.share(buffer.toString(), subject: 'Utility Details - $monthLabel');
   }
 
   String _formatMonth(String monthKey) {
@@ -588,6 +891,16 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
         final cottageDeposits = data.deposits
             .where((d) => !d.isMemberDeposit)
             .toList();
+        // Mirrors the web: expense edit/delete needs super admin OR
+        // can_add_expenses (updateExpense/deleteExpense's own check);
+        // deposit edit/delete and the PDF download are super-admin only
+        // (addMemberUtilityDeposit/updateCottageDeposit/the pdf route all
+        // require profile.role === "super_admin", except the download route
+        // which also allows can_add_expenses).
+        final canEditExpenses =
+            data.profile.isSuperAdmin || data.profile.canAddExpenses;
+        final canEditDeposits = data.profile.isSuperAdmin;
+        final canDownload = canEditExpenses;
 
         return Scaffold(
           backgroundColor: CottageColors.primary,
@@ -600,12 +913,8 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
                     surface: surface,
                     tabBar: _buildTabBar(),
                     monthText: _formatMonth(data.monthKey),
-                    onDownload: () {
-                      showToast(
-                        context,
-                        'Summary report downloaded successfully',
-                      );
-                    },
+                    canDownload: canDownload,
+                    onDownload: () => _download(data),
                     safeAreaTop: MediaQuery.of(context).padding.top,
                   ),
                 ),
@@ -616,14 +925,23 @@ class _UtilitiesScreenState extends State<UtilitiesScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _ExpenseTab(expenses: data.expenses, onRefresh: _refresh),
+                  _ExpenseTab(
+                    expenses: data.expenses,
+                    onRefresh: _refresh,
+                    onEdit: canEditExpenses ? _showEditExpense : null,
+                    onDelete: canEditExpenses ? _confirmDeleteExpense : null,
+                  ),
                   _MemberDepositTab(
                     deposits: memberDeposits,
                     onRefresh: _refresh,
+                    onEdit: canEditDeposits ? _showEditDeposit : null,
+                    onDelete: canEditDeposits ? _confirmDeleteDeposit : null,
                   ),
                   _CottageDepositTab(
                     deposits: cottageDeposits,
                     onRefresh: _refresh,
+                    onEdit: canEditDeposits ? _showEditDeposit : null,
+                    onDelete: canEditDeposits ? _confirmDeleteDeposit : null,
                   ),
                 ],
               ),
@@ -661,6 +979,7 @@ class _DynamicUtilityDetailsHeaderDelegate
   final CottageSurface surface;
   final Widget tabBar;
   final String monthText;
+  final bool canDownload;
   final VoidCallback onDownload;
   final double safeAreaTop;
 
@@ -668,15 +987,26 @@ class _DynamicUtilityDetailsHeaderDelegate
     required this.surface,
     required this.tabBar,
     required this.monthText,
+    required this.canDownload,
     required this.onDownload,
     required this.safeAreaTop,
   });
 
-  @override
-  double get minExtent => safeAreaTop + 150.0;
+  // A member without download permission doesn't see the Download button
+  // (see the `if (canDownload)` below) -- shrink the reserved height by its
+  // footprint the same way _DynamicMembersHeaderDelegate does for its
+  // "Add Member" button, so hiding it doesn't leave a big empty gap above
+  // the tab bar.
+  static const _downloadRowFootprint = 48.0;
+  static const _noButtonTrailingGap = 8.0;
+  double get _heightAdjustment =>
+      canDownload ? 0 : (_downloadRowFootprint - _noButtonTrailingGap);
 
   @override
-  double get maxExtent => safeAreaTop + 234.0;
+  double get minExtent => safeAreaTop + 150.0 - _heightAdjustment;
+
+  @override
+  double get maxExtent => safeAreaTop + 234.0 - _heightAdjustment;
 
   @override
   Widget build(
@@ -870,48 +1200,49 @@ class _DynamicUtilityDetailsHeaderDelegate
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: onDownload,
-                    child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: _UtilityColors.border),
-                        borderRadius: BorderRadius.circular(1000),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.download_rounded,
-                            size: 20,
-                            color: _UtilityColors.darkText,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Download',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+              if (canDownload)
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: onDownload,
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: _UtilityColors.border),
+                          borderRadius: BorderRadius.circular(1000),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.download_rounded,
+                              size: 20,
                               color: _UtilityColors.darkText,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Download',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: _UtilityColors.darkText,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               const SizedBox(height: 16),
               tabBar,
             ],
@@ -1243,10 +1574,20 @@ String _formatCardDate(String isoDate) {
 /// 8, p-4, gap-4 column of [date row, ...content].
 class _UtilityCard extends StatelessWidget {
   final String date;
+  // Only rendered when non-null -- mirrors UtilityDetailsMobile.tsx's
+  // `canEditExpenses && (<Edit.../><Delete.../>)`: a viewer without
+  // permission sees a plain read-only card with no action boxes at all,
+  // not a disabled/no-op button.
   final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final Widget content;
 
-  const _UtilityCard({required this.date, this.onEdit, required this.content});
+  const _UtilityCard({
+    required this.date,
+    this.onEdit,
+    this.onDelete,
+    required this.content,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1284,33 +1625,53 @@ class _UtilityCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: onEdit,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _UtilityColors.fieldBg,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: _UtilityColors.border,
-                      width: 0.8,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: CottageColors.primary,
-                  ),
+              if (onEdit != null) ...[
+                const SizedBox(width: 4),
+                _UtilityIconBox(icon: Icons.edit_outlined, onTap: onEdit!),
+              ],
+              if (onDelete != null) ...[
+                const SizedBox(width: 4),
+                _UtilityIconBox(
+                  icon: Icons.delete_outline,
+                  iconColor: CottageColors.destructive,
+                  onTap: onDelete!,
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 4),
           content,
         ],
+      ),
+    );
+  }
+}
+
+class _UtilityIconBox extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  const _UtilityIconBox({
+    required this.icon,
+    this.iconColor = CottageColors.primary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _UtilityColors.fieldBg,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _UtilityColors.border, width: 0.8),
+        ),
+        child: Icon(icon, size: 18, color: iconColor),
       ),
     );
   }
@@ -1398,8 +1759,15 @@ class _UtilityNoteRow extends StatelessWidget {
 class _ExpenseTab extends StatelessWidget {
   final List<Expense> expenses;
   final VoidCallback onRefresh;
+  final void Function(Expense)? onEdit;
+  final void Function(Expense)? onDelete;
 
-  const _ExpenseTab({required this.expenses, required this.onRefresh});
+  const _ExpenseTab({
+    required this.expenses,
+    required this.onRefresh,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1424,18 +1792,12 @@ class _ExpenseTab extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final e = expenses[index];
-          String title = e.category ?? 'Other';
-          title = title.isEmpty
-              ? 'Other'
-              : title[0].toUpperCase() + title.substring(1);
-          if (title == 'House_rent') title = 'House Rent';
+          final title = utilityCategoryLabel(e.category ?? 'other');
 
           return _UtilityCard(
             date: e.expenseDate,
-            onEdit: () => showToast(
-              context,
-              'Editing expenses is coming in a future update',
-            ),
+            onEdit: onEdit != null ? () => onEdit!(e) : null,
+            onDelete: onDelete != null ? () => onDelete!(e) : null,
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1479,12 +1841,12 @@ class _ExpenseTab extends StatelessWidget {
                 const SizedBox(height: 4),
                 _UtilityInfoRow(
                   label: 'Payment Source',
-                  value: e.paymentSource ?? 'Cottage Balance',
+                  value: _UtilitiesScreenState._paymentSourceLabel(e),
                 ),
                 const SizedBox(height: 4),
                 _UtilityInfoRow(
                   label: 'Total Amount',
-                  value: e.amount.toStringAsFixed(0),
+                  value: '${e.amount.toStringAsFixed(2)} tk',
                   boldValue: true,
                 ),
               ],
@@ -1496,13 +1858,71 @@ class _ExpenseTab extends StatelessWidget {
   }
 }
 
+/// Member Deposit row's avatar chip -- a plain [CircleAvatar] with
+/// `backgroundImage: NetworkImage(...)` used to have no failure handling at
+/// all: a broken/corrupt/oversized image (this URL comes straight from
+/// whatever a member uploaded as their profile photo, unvalidated) could
+/// crash image decoding hard enough to take the whole app process down
+/// with it (seen as a native tombstone in logcat, not a catchable Dart
+/// exception) -- reported when opening this tab specifically, since it's
+/// the one place these avatars render as `backgroundImage` decode failures
+/// rather than via `Image.network`'s own error-safe loading elsewhere.
+/// [onBackgroundImageError] can't stop a native decoder crash, but it does
+/// stop the ordinary "bad/unreachable URL" case from ever reaching that
+/// code path a second time, and reliably falls back to initials instead of
+/// leaving a permanently-broken image widget in the tree.
+class _DepositMemberAvatar extends StatefulWidget {
+  final String? avatarUrl;
+  final String name;
+  const _DepositMemberAvatar({required this.avatarUrl, required this.name});
+
+  @override
+  State<_DepositMemberAvatar> createState() => _DepositMemberAvatarState();
+}
+
+class _DepositMemberAvatarState extends State<_DepositMemberAvatar> {
+  bool _failed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUrl = (widget.avatarUrl?.isNotEmpty ?? false) && !_failed;
+    return CircleAvatar(
+      radius: 13.5,
+      backgroundColor: CottageColors.primary.withValues(alpha: 0.1),
+      backgroundImage: hasUrl ? NetworkImage(widget.avatarUrl!) : null,
+      onBackgroundImageError: hasUrl
+          ? (_, _) {
+              if (mounted) setState(() => _failed = true);
+            }
+          : null,
+      child: hasUrl
+          ? null
+          : Text(
+              widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                color: CottageColors.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+    );
+  }
+}
+
 // --- Member Deposit Tab (Figma "Utility Details - Member Deposit") ---
 
 class _MemberDepositTab extends StatelessWidget {
   final List<UtilityDeposit> deposits;
   final VoidCallback onRefresh;
+  final void Function(UtilityDeposit)? onEdit;
+  final void Function(UtilityDeposit)? onDelete;
 
-  const _MemberDepositTab({required this.deposits, required this.onRefresh});
+  const _MemberDepositTab({
+    required this.deposits,
+    required this.onRefresh,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1528,15 +1948,11 @@ class _MemberDepositTab extends StatelessWidget {
         itemBuilder: (context, index) {
           final d = deposits[index];
           final name = d.memberName ?? 'Member';
-          final createdAt =
-              d.createdAt?.toIso8601String().substring(0, 10) ?? '';
 
           return _UtilityCard(
-            date: createdAt,
-            onEdit: () => showToast(
-              context,
-              'Editing deposits is coming in a future update',
-            ),
+            date: d.depositDate,
+            onEdit: onEdit != null ? () => onEdit!(d) : null,
+            onDelete: onDelete != null ? () => onDelete!(d) : null,
             content: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1557,25 +1973,7 @@ class _MemberDepositTab extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 13.5,
-                        backgroundColor: CottageColors.primary.withValues(
-                          alpha: 0.1,
-                        ),
-                        backgroundImage: (d.avatarUrl?.isNotEmpty ?? false)
-                            ? NetworkImage(d.avatarUrl!)
-                            : null,
-                        child: (d.avatarUrl?.isNotEmpty ?? false)
-                            ? null
-                            : Text(
-                                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                style: const TextStyle(
-                                  color: CottageColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                      ),
+                      _DepositMemberAvatar(avatarUrl: d.avatarUrl, name: name),
                       const SizedBox(height: 4),
                       Text(
                         name,
@@ -1603,7 +2001,7 @@ class _MemberDepositTab extends StatelessWidget {
                       const SizedBox(height: 4),
                       _UtilityInfoRow(
                         label: 'Total Amount',
-                        value: d.amount.toStringAsFixed(0),
+                        value: '${d.amount.toStringAsFixed(2)} tk',
                         boldValue: true,
                       ),
                     ],
@@ -1623,8 +2021,15 @@ class _MemberDepositTab extends StatelessWidget {
 class _CottageDepositTab extends StatelessWidget {
   final List<UtilityDeposit> deposits;
   final VoidCallback onRefresh;
+  final void Function(UtilityDeposit)? onEdit;
+  final void Function(UtilityDeposit)? onDelete;
 
-  const _CottageDepositTab({required this.deposits, required this.onRefresh});
+  const _CottageDepositTab({
+    required this.deposits,
+    required this.onRefresh,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1649,15 +2054,11 @@ class _CottageDepositTab extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           final d = deposits[index];
-          final createdAt =
-              d.createdAt?.toIso8601String().substring(0, 10) ?? '';
 
           return _UtilityCard(
-            date: createdAt,
-            onEdit: () => showToast(
-              context,
-              'Editing deposits is coming in a future update',
-            ),
+            date: d.depositDate,
+            onEdit: onEdit != null ? () => onEdit!(d) : null,
+            onDelete: onDelete != null ? () => onDelete!(d) : null,
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1667,7 +2068,7 @@ class _CottageDepositTab extends StatelessWidget {
                 const SizedBox(height: 4),
                 _UtilityInfoRow(
                   label: 'Total Amount',
-                  value: d.amount.toStringAsFixed(0),
+                  value: '${d.amount.toStringAsFixed(2)} tk',
                   boldValue: true,
                 ),
               ],

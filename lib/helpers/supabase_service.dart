@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,6 +32,23 @@ class SupabaseService {
   static bool get isInitialized => initializationError == null && _isInitDone;
   static bool _isInitDone = false;
 
+  /// Set the moment `onAuthStateChange` reports
+  /// [AuthChangeEvent.passwordRecovery] -- e.g. when the app is opened via a
+  /// "reset password" email link. Tracked here (subscribed immediately after
+  /// `Supabase.initialize()` in [initialize], before `runApp` even runs)
+  /// rather than solely by a listener inside `_AuthGate` (main.dart):
+  /// `onAuthStateChange` is a broadcast stream with no replay, and the app
+  /// can take several frames to reach `_AuthGate` (splash screen,
+  /// onboarding check) -- if the recovery event fires from a cold-start deep
+  /// link before that widget subscribes, it's lost forever and the recovery
+  /// session silently reads as an ordinary logged-in session instead of
+  /// routing to the "set new password" screen. Checking this notifier's
+  /// current value (not just listening for future changes) is what lets
+  /// `_AuthGate` catch an event it wasn't around for.
+  static final ValueNotifier<bool> passwordRecoveryPending = ValueNotifier(
+    false,
+  );
+
   // Raw nonce handed to GoogleSignIn.initialize() (hashed) at startup, then
   // re-supplied in plaintext to signInWithIdToken() so Supabase can verify
   // it against the hash embedded in Google's returned ID token.
@@ -51,6 +69,14 @@ class SupabaseService {
         publishableKey: _supabaseAnonKey,
       );
       _isInitDone = true;
+      // Subscribed here -- as early as possible, before runApp -- so a
+      // cold-start recovery deep link can't be missed. See
+      // [passwordRecoveryPending]'s doc comment.
+      client.auth.onAuthStateChange.listen((state) {
+        if (state.event == AuthChangeEvent.passwordRecovery) {
+          passwordRecoveryPending.value = true;
+        }
+      });
     } catch (e) {
       initializationError = 'Failed to initialize Supabase:\n$e';
     }

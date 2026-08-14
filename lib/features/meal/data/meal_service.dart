@@ -41,6 +41,22 @@ class MealService {
     }, onConflict: 'user_id,meal_date');
   }
 
+  /// Removes every member's meal count for one date -- mirrors
+  /// `deleteDailyMealsForDate` in src/app/(house)/meal/actions.ts (used by
+  /// the Monthly Details "Meal Details" card's delete icon, which deletes
+  /// the whole day's row rather than one member's count since that's the
+  /// card's own unit -- one row per date, not per member).
+  Future<void> deleteDailyMealsForDate({
+    required String monthKey,
+    required String date,
+  }) async {
+    await _client
+        .from('daily_meals')
+        .delete()
+        .eq('month_key', monthKey)
+        .eq('meal_date', date);
+  }
+
   /// Fetch all bazaar entries for the given month, with shopper names and avatars.
   Future<List<BazaarEntry>> getBazaarEntries(String monthKey) async {
     final rows = await _client

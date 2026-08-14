@@ -720,6 +720,7 @@ class _MembersScreenState extends State<MembersScreen>
                     safeAreaTop: MediaQuery.of(context).padding.top,
                     onInviteTap: () =>
                         _showAddMemberSheet(data.viewer, data.cottageName),
+                    isSuperAdmin: data.viewer.isSuperAdmin,
                   ),
                 ),
               ];
@@ -802,18 +803,32 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
   final CottageSurface surface;
   final double safeAreaTop;
   final VoidCallback onInviteTap;
+  final bool isSuperAdmin;
 
   _DynamicMembersHeaderDelegate({
     required this.surface,
     required this.safeAreaTop,
     required this.onInviteTap,
+    required this.isSuperAdmin,
   });
 
-  @override
-  double get minExtent => safeAreaTop + 88.0;
+  // The header's fixed height budgets room for the pinned "Add Member" row
+  // (its own height plus the 12px bottom inset it sits at) below the
+  // description text. A plain member never sees that row (see
+  // `if (isSuperAdmin)` below), so without this adjustment the header stays
+  // just as tall and leaves a big empty gap between the description and the
+  // member list underneath -- shrink both extents by the row's footprint,
+  // leaving just an 8px gap instead.
+  static const _addMemberRowFootprint = 48.0;
+  static const _noButtonTrailingGap = 8.0;
+  double get _heightAdjustment =>
+      isSuperAdmin ? 0 : (_addMemberRowFootprint - _noButtonTrailingGap);
 
   @override
-  double get maxExtent => safeAreaTop + 148.0;
+  double get minExtent => safeAreaTop + 88.0 - _heightAdjustment;
+
+  @override
+  double get maxExtent => safeAreaTop + 148.0 - _heightAdjustment;
 
   @override
   Widget build(
@@ -956,7 +971,8 @@ class _DynamicMembersHeaderDelegate extends SliverPersistentHeaderDelegate {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [_AddMemberButton(onTap: onInviteTap)]),
+              if (isSuperAdmin)
+                Row(children: [_AddMemberButton(onTap: onInviteTap)]),
             ],
           ),
         ),
@@ -995,6 +1011,13 @@ class _AddMemberButton extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         minimumSize: Size.zero,
+        // Without this, OutlinedButton still enforces Material's default
+        // 48dp minimum tap-target height as invisible padding around the
+        // visually-smaller button (minimumSize: Size.zero only caps the
+        // visual box, not the tap target) -- that extra ~14px is what
+        // overflowed the header's fixed-height Positioned during the
+        // scroll-driven shrink transition.
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }

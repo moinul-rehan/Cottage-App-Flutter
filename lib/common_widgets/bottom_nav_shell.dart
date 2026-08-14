@@ -69,6 +69,20 @@ class BottomNavShellState extends State<BottomNavShell> {
   bool get _canManageMealRequests =>
       (_profile?.canAddMeals ?? false) || (_profile?.canAddBazaar ?? false);
 
+  bool get _canAddMeals => _profile?.canAddMeals ?? false;
+  bool get _canAddBazaar => _profile?.canAddBazaar ?? false;
+  bool get _canAddDeposit => _profile?.canAddDeposit ?? false;
+  bool get _isSuperAdmin => _profile?.isSuperAdmin ?? false;
+  bool get _canAddExpenses => _profile?.canAddExpenses ?? false;
+
+  /// A plain member (no super admin, no `can_add_expenses` grant) only ever
+  /// sees the single "Utility Details" speed-dial item -- mirrors
+  /// MobileUtilitiesSheet.tsx's `items` list, where every other entry is
+  /// gated behind `isSuperAdmin`/`canAddExpenses`. With just one possible
+  /// destination, popping open a speed dial to pick it is pointless
+  /// ceremony -- see [_handleTabTap].
+  bool get _utilitiesHasOnlyDetails => !_isSuperAdmin && !_canAddExpenses;
+
   /// Public read of the same flag, for callers outside this State deciding
   /// whether tab 1 is the Requests inbox or Notices (see
   /// notification_navigation.dart).
@@ -202,6 +216,13 @@ class BottomNavShellState extends State<BottomNavShell> {
         _index = idx;
         _activeSheet = null;
       });
+    } else if (idx == 3 && _utilitiesHasOnlyDetails) {
+      // Only one destination exists for this member -- skip the speed dial
+      // and go straight there, same as tapping Home/Requests above.
+      setState(() {
+        _index = 3;
+        _activeSheet = null;
+      });
     } else {
       final sheetKey = idx == 2 ? 'meal' : (idx == 3 ? 'utilities' : 'menu');
       setState(() {
@@ -233,55 +254,101 @@ class BottomNavShellState extends State<BottomNavShell> {
             });
           },
         ),
-        _SpeedDialItemData(
-          key: 'add-bazaar',
-          label: 'Add Meal Expense',
-          icon: Icons.shopping_basket_outlined,
-          bgColor: const Color(0xFFFEF3C7),
-          fgColor: const Color(0xFF92400E),
-          onTap: () {
-            setState(() {
-              _index = 2;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              MealScreen.mealScreenKey.currentState?.triggerAction(
-                'add-bazaar',
-              );
-            });
-          },
-        ),
-        _SpeedDialItemData(
-          key: 'add-deposit',
-          label: 'Add Meal Deposit',
-          icon: Icons.wallet_outlined,
-          bgColor: const Color(0xFFD1FAE5),
-          fgColor: const Color(0xFF065F46),
-          onTap: () {
-            setState(() {
-              _index = 2;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              MealScreen.mealScreenKey.currentState?.triggerAction(
-                'add-deposit',
-              );
-            });
-          },
-        ),
-        _SpeedDialItemData(
-          key: 'add-meal',
-          label: 'Add Meal',
-          icon: Icons.add_circle_outline_rounded,
-          bgColor: const Color(0xFFE0F2FE),
-          fgColor: const Color(0xFF075985),
-          onTap: () {
-            setState(() {
-              _index = 2;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              MealScreen.mealScreenKey.currentState?.triggerAction('add-meal');
-            });
-          },
-        ),
+        // Mirrors MobileMealSheet.tsx's `canAddBazaar ? add-cost :
+        // request-cost` -- a member without the grant submits a
+        // meal_cost_requests row for review instead of writing directly.
+        _canAddBazaar
+            ? _SpeedDialItemData(
+                key: 'add-bazaar',
+                label: 'Add Meal Expense',
+                icon: Icons.shopping_cart_outlined,
+                bgColor: const Color(0xFFFEF3C7),
+                fgColor: const Color(0xFF92400E),
+                onTap: () {
+                  setState(() {
+                    _index = 2;
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    MealScreen.mealScreenKey.currentState?.triggerAction(
+                      'add-bazaar',
+                    );
+                  });
+                },
+              )
+            : _SpeedDialItemData(
+                key: 'request-cost',
+                label: 'Request Meal Cost',
+                icon: Icons.send_outlined,
+                bgColor: const Color(0xFFFEF3C7),
+                fgColor: const Color(0xFF92400E),
+                onTap: () {
+                  setState(() {
+                    _index = 2;
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    MealScreen.mealScreenKey.currentState?.triggerAction(
+                      'request-cost',
+                    );
+                  });
+                },
+              ),
+        // Deposit has no request-flow fallback (mirrors the web, which
+        // simply omits this item when canAddDeposit is false).
+        if (_canAddDeposit)
+          _SpeedDialItemData(
+            key: 'add-deposit',
+            label: 'Add Meal Deposit',
+            icon: Icons.savings_outlined,
+            bgColor: const Color(0xFFD1FAE5),
+            fgColor: const Color(0xFF065F46),
+            onTap: () {
+              setState(() {
+                _index = 2;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                MealScreen.mealScreenKey.currentState?.triggerAction(
+                  'add-deposit',
+                );
+              });
+            },
+          ),
+        // Mirrors MobileMealSheet.tsx's `canAddMeals ? add-meal :
+        // request-meal`.
+        _canAddMeals
+            ? _SpeedDialItemData(
+                key: 'add-meal',
+                label: 'Add Meal',
+                icon: Icons.add_circle_outline_rounded,
+                bgColor: const Color(0xFFE0F2FE),
+                fgColor: const Color(0xFF075985),
+                onTap: () {
+                  setState(() {
+                    _index = 2;
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    MealScreen.mealScreenKey.currentState?.triggerAction(
+                      'add-meal',
+                    );
+                  });
+                },
+              )
+            : _SpeedDialItemData(
+                key: 'request-meal',
+                label: 'Request Meal',
+                icon: Icons.send_outlined,
+                bgColor: const Color(0xFFE0F2FE),
+                fgColor: const Color(0xFF075985),
+                onTap: () {
+                  setState(() {
+                    _index = 2;
+                  });
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    MealScreen.mealScreenKey.currentState?.triggerAction(
+                      'request-meal',
+                    );
+                  });
+                },
+              ),
       ];
     } else if (_activeSheet == 'utilities') {
       rightOffset = screenWidth * 0.3 - 24;
@@ -298,74 +365,79 @@ class BottomNavShellState extends State<BottomNavShell> {
             });
           },
         ),
-        _SpeedDialItemData(
-          key: 'cottage-deposit',
-          label: 'Cottage Deposit',
-          icon: Icons.house_outlined,
-          bgColor: const Color(0xFFCCFBF1),
-          fgColor: const Color(0xFF0F766E),
-          onTap: () {
-            setState(() {
-              _index = 3;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              UtilitiesScreen.utilitiesScreenKey.currentState?.triggerAction(
-                'cottage-deposit',
-              );
-            });
-          },
-        ),
-        _SpeedDialItemData(
-          key: 'member-deposit',
-          label: 'Member Deposit',
-          icon: Icons.account_balance_wallet_outlined,
-          bgColor: const Color(0xFFD1FAE5),
-          fgColor: const Color(0xFF065F46),
-          onTap: () {
-            setState(() {
-              _index = 3;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              UtilitiesScreen.utilitiesScreenKey.currentState?.triggerAction(
-                'member-deposit',
-              );
-            });
-          },
-        ),
-        _SpeedDialItemData(
-          key: 'utility-expense',
-          label: 'Utility Expense',
-          icon: Icons.receipt_long_outlined,
-          bgColor: const Color(0xFFFEF3C7),
-          fgColor: const Color(0xFF92400E),
-          onTap: () {
-            setState(() {
-              _index = 3;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              UtilitiesScreen.utilitiesScreenKey.currentState?.triggerAction(
-                'utility-expense',
-              );
-            });
-          },
-        ),
-        _SpeedDialItemData(
-          key: 'utility-statement',
-          label: 'Utility Statement',
-          icon: Icons.description_outlined,
-          bgColor: const Color(0xFFF3E8FF),
-          fgColor: const Color(0xFF6B21A8),
-          onTap: () {
-            setState(() {
-              _index = 3;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              UtilitiesScreen.utilitiesScreenKey.currentState?.triggerAction(
-                'utility-statement',
-              );
-            });
-          },
-        ),
+        // Mirrors MobileUtilitiesSheet.tsx: cottage/member deposit and the
+        // Statement shortcut are super-admin only.
+        if (_isSuperAdmin) ...[
+          _SpeedDialItemData(
+            key: 'cottage-deposit',
+            label: 'Cottage Deposit',
+            icon: Icons.house_outlined,
+            bgColor: const Color(0xFFCCFBF1),
+            fgColor: const Color(0xFF0F766E),
+            onTap: () {
+              setState(() {
+                _index = 3;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                UtilitiesScreen.utilitiesScreenKey.currentState
+                    ?.triggerAction('cottage-deposit');
+              });
+            },
+          ),
+          _SpeedDialItemData(
+            key: 'member-deposit',
+            label: 'Member Deposit',
+            icon: Icons.account_balance_wallet_outlined,
+            bgColor: const Color(0xFFD1FAE5),
+            fgColor: const Color(0xFF065F46),
+            onTap: () {
+              setState(() {
+                _index = 3;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                UtilitiesScreen.utilitiesScreenKey.currentState
+                    ?.triggerAction('member-deposit');
+              });
+            },
+          ),
+        ],
+        // Mirrors `canAddExpenses` gating "Utility Expense" -- a plain
+        // member without this grant has no way to add one from here (there
+        // is no request-flow for utility expenses, unlike meal expenses).
+        if (_canAddExpenses)
+          _SpeedDialItemData(
+            key: 'utility-expense',
+            label: 'Utility Expense',
+            icon: Icons.receipt_long_outlined,
+            bgColor: const Color(0xFFFEF3C7),
+            fgColor: const Color(0xFF92400E),
+            onTap: () {
+              setState(() {
+                _index = 3;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                UtilitiesScreen.utilitiesScreenKey.currentState
+                    ?.triggerAction('utility-expense');
+              });
+            },
+          ),
+        if (_isSuperAdmin)
+          _SpeedDialItemData(
+            key: 'utility-statement',
+            label: 'Utility Statement',
+            icon: Icons.description_outlined,
+            bgColor: const Color(0xFFF3E8FF),
+            fgColor: const Color(0xFF6B21A8),
+            onTap: () {
+              setState(() {
+                _index = 3;
+              });
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                UtilitiesScreen.utilitiesScreenKey.currentState
+                    ?.triggerAction('utility-statement');
+              });
+            },
+          ),
       ];
     } else if (_activeSheet == 'menu') {
       rightOffset = screenWidth * 0.1 - 24;
