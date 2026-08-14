@@ -66,11 +66,37 @@
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin.
+
+         The four VIEW entries below are the same package-visibility
+         requirement applied to url_launcher: on Android 11+ (API 30+),
+         canLaunchUrl()/launchUrl() call PackageManager.queryIntentActivities()
+         under the hood, which returns nothing for a scheme not declared
+         here, regardless of whether a browser/dialer/mail app is actually
+         installed. Without these, every https:// (Settings' Facebook/website
+         links), tel: and mailto: (Contacts screen's Call/Email actions) link
+         silently fails canLaunchUrl's check and falls straight to the
+         "Could not open" toast. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="mailto"/>
         </intent>
     </queries>
 </manifest>

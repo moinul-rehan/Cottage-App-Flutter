@@ -56,6 +56,9 @@ dependencies:
   # Launch tel:/mailto: links (Contacts screen Call/Email actions).
   url_launcher: ^6.3.1
 
+  # Picking a new profile photo (Edit Profile screen).
+  image_picker: ^1.1.2
+
   # Persists whether the first-launch onboarding carousel has been seen.
   shared_preferences: ^2.3.3
 

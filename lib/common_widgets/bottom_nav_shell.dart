@@ -66,14 +66,28 @@ class BottomNavShellState extends State<BottomNavShell> {
   Profile? _profile;
   int _pendingRequestCount = 0;
 
-  bool get _canManageMealRequests =>
-      (_profile?.canAddMeals ?? false) || (_profile?.canAddBazaar ?? false);
-
-  bool get _canAddMeals => _profile?.canAddMeals ?? false;
-  bool get _canAddBazaar => _profile?.canAddBazaar ?? false;
-  bool get _canAddDeposit => _profile?.canAddDeposit ?? false;
   bool get _isSuperAdmin => _profile?.isSuperAdmin ?? false;
-  bool get _canAddExpenses => _profile?.canAddExpenses ?? false;
+
+  // Mirrors src/app/(house)/layout.tsx exactly: every one of these ORs
+  // `profile.role === "super_admin"` with its own can_add_* flag -- a super
+  // admin gets every grant regardless of what's actually set on their own
+  // profile row. The earlier port of this only checked the raw can_add_*
+  // column, so a super admin whose own row happened to have e.g.
+  // can_add_bazaar=false would see "Request Meal Cost" instead of "Add Meal
+  // Expense" and lose direct-write access to their own cottage's meal
+  // section -- exactly backwards from how permissions are supposed to work.
+  bool get _canManageMealRequests =>
+      _isSuperAdmin ||
+      (_profile?.canAddMeals ?? false) ||
+      (_profile?.canAddBazaar ?? false);
+
+  bool get _canAddMeals => _isSuperAdmin || (_profile?.canAddMeals ?? false);
+  bool get _canAddBazaar =>
+      _isSuperAdmin || (_profile?.canAddBazaar ?? false);
+  bool get _canAddDeposit =>
+      _isSuperAdmin || (_profile?.canAddDeposit ?? false);
+  bool get _canAddExpenses =>
+      _isSuperAdmin || (_profile?.canAddExpenses ?? false);
 
   /// A plain member (no super admin, no `can_add_expenses` grant) only ever
   /// sees the single "Utility Details" speed-dial item -- mirrors
@@ -517,6 +531,25 @@ class BottomNavShellState extends State<BottomNavShell> {
             });
             WidgetsBinding.instance.addPostFrameCallback((_) {
               MenuScreen.menuScreenKey.currentState?.triggerAction('members');
+            });
+          },
+        ),
+        // Always present, unlike every other entry above -- mirrors
+        // MobileMenuSheet.tsx's "Feedback" item, which isn't gated behind
+        // any permission (RLS only requires the submitter be the signed-in
+        // user, see migration 0031_developer_feedback.sql).
+        _SpeedDialItemData(
+          key: 'feedback',
+          label: 'Feedback',
+          icon: Icons.report_gmailerrorred_outlined,
+          bgColor: const Color(0xFFFFE4E6),
+          fgColor: const Color(0xFF9F1239),
+          onTap: () {
+            setState(() {
+              _index = 4;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              MenuScreen.menuScreenKey.currentState?.triggerAction('feedback');
             });
           },
         ),

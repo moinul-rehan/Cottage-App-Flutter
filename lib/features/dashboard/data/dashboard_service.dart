@@ -139,7 +139,7 @@ class DashboardService {
   Future<Profile> getCurrentProfile() async {
     final userId = SupabaseService.currentUser!.id;
     const cols =
-        'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, role, is_active, '
+        'id, cottage_id, first_name, last_name, email, avatar_url, mobile_number, address, gender, hometown, role, is_active, '
         'can_add_expenses, can_add_bazaar, can_add_meals, can_add_deposit, can_add_notice';
     final map = await _ensureAndFetchProfile(userId, cols);
     return Profile.fromMap(map);

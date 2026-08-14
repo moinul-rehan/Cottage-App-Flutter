@@ -13,6 +13,10 @@ class Profile {
   final String? roomLabel;
   final String? hometown;
 
+  /// 'male' | 'female' | 'other' | null -- mirrors profiles.gender (see
+  /// supabase/migrations/0018_profile_address.sql's update_own_profile RPC).
+  final String? gender;
+
   /// 'super_admin' | 'member' -- mirrors profiles.role, used by notice-board
   /// visibility/management checks (see src/lib/notice-types.tsx).
   final String role;
@@ -49,6 +53,7 @@ class Profile {
     this.address,
     this.roomLabel,
     this.hometown,
+    this.gender,
     this.role = 'member',
     this.isActive = true,
     this.removedAt,
@@ -86,6 +91,7 @@ class Profile {
       address: map['address'] as String?,
       roomLabel: map['room_label'] as String?,
       hometown: map['hometown'] as String?,
+      gender: map['gender'] as String?,
       role: map['role'] as String? ?? 'member',
       isActive: map['is_active'] as bool? ?? true,
       removedAt: map['removed_at'] != null
